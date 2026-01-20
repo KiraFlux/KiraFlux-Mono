@@ -104,7 +104,7 @@ private:
     }
 
     /// @brief Transfer software buffer to display via I2C in 64-byte packets
-    void sendImpl() {
+    void sendImpl() const {
         static constexpr auto packet_size = 64;// Optimal for ESP32 performance
 
         static constexpr u8 set_area_commands[] = {
