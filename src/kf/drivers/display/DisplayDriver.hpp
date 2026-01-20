@@ -7,19 +7,20 @@
 #include <kf/core/pixel_traits.hpp>
 #include <kf/memory/Slice.hpp>
 
+
 namespace kf {
 
 /// @brief CRTP base class for display driver implementations
 /// @tparam Impl Concrete driver implementation type
-/// @tparam Format Physical display pixel format
+/// @tparam F Physical display pixel format
 /// @tparam W Physical display width in pixels
 /// @tparam H Physical display height in pixels
-template<typename Impl, PixelFormat Format, usize W, usize H> struct DisplayDriver {
+template<typename Impl, PixelFormat F, usize W, usize H> struct DisplayDriver {
     friend Impl;
 
 protected:
     using Base = DisplayDriver;
-    using Traits = PixelTraits<Format>;
+    using Traits = PixelTraits<F>;
 
 public:
     /// @brief Type used for buffer storage
@@ -27,6 +28,9 @@ public:
 
     /// @brief Type used for color representation
     using ColorType = typename Traits::ColorType;
+
+    /// @brief Pixel format
+    static constexpr auto Format{F};
 
 protected:
     /// @brief Physical display width
