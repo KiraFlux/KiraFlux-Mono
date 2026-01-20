@@ -322,10 +322,11 @@ public:
     /// @param start_y Starting Y coordinate (top)
     /// @param text Null-terminated string with formatting codes
     /// @details Supports formatting codes:
-    ///   \x80 - Reset to foreground color
-    ///   \x81 - Use background color
-    ///   \x82 - Center text horizontally
-    ///   \x83 - Set custom color (followed by color bytes)
+    ///   \x80 - Normal color mode (text - fg, bg)
+    ///   \x81 - Invert color mode (bg, text - fg)
+    ///   \x82 - Set cursor at center x
+    ///   \x83 - Set custom foreground color (followed by color bytes)
+    ///   \x84 - Set custom background color (followed by color bytes)
     ///   \n - New line
     ///   \t - Tab (4 character widths)
     void text(Pixel start_x, Pixel start_y, const char *text) noexcept {
@@ -334,22 +335,25 @@ public:
         const u8 font_width = current_font->glyph_width;
         const u8 font_height = current_font->glyph_height;
         const u8 font_total_height = current_font->heightTotal();
-        ColorType current_color = foreground_color;
+        ColorType current_foreground_color = foreground_color;
+        ColorType current_background_color = background_color;
 
         for (; *text != '\0'; ++text) {
             switch (*text) {
                 case '\x80': {
-                    current_color = foreground_color;
+                    current_foreground_color = foreground_color;
+                    current_background_color = background_color;
                     continue;
                 }
                 case '\x81': {
-                    current_color = background_color;
+                    current_foreground_color = background_color;
+                    current_background_color = foreground_color;
                     continue;
                 }
 
                 case '\x82': {
                     const auto new_x = centerX();
-                    clearLineSegment(cursor_x, cursor_y, new_x);
+                    clearLineSegment(cursor_x, cursor_y, new_x, current_background_color);
                     cursor_x = new_x;
                     continue;
                 }
@@ -367,12 +371,29 @@ public:
                         ++text;
                     }
                     --text;// Return to last read character
-                    current_color = new_color;
+                    current_foreground_color = new_color;
+                    continue;
+                }
+
+                case '\x84': {
+                    // Read color from following bytes
+                    ++text;
+                    if (*text == '\0') { return; }
+
+                    ColorType new_color = 0;
+                    u8 *color_bytes = reinterpret_cast<u8 *>(&new_color);
+                    for (usize i = 0; i < sizeof(ColorType); ++i) {
+                        if (*text == '\0') { break; }
+                        color_bytes[i] = static_cast<u8>(*text);
+                        ++text;
+                    }
+                    --text;// Return to last read character
+                    current_background_color = new_color;
                     continue;
                 }
 
                 case '\n': {
-                    clearLineSegment(cursor_x, cursor_y, maxX());
+                    clearLineSegment(cursor_x, cursor_y, maxX(), current_background_color);
                     cursor_x = start_x;
                     cursor_y = static_cast<Pixel>(cursor_y + font_total_height);
                     continue;
@@ -381,14 +402,14 @@ public:
                 case '\t': {
                     const auto tab_width = tabWidth();
                     const auto new_x = static_cast<Pixel>(((cursor_x / tab_width) + 1) * tab_width);
-                    clearLineSegment(cursor_x, cursor_y, new_x);
+                    clearLineSegment(cursor_x, cursor_y, new_x, current_background_color);
                     cursor_x = new_x;
                     continue;
                 }
             }
 
             if (cursor_x > static_cast<Pixel>(width() - font_width)) {
-                clearLineSegment(cursor_x, cursor_y, maxX());
+                clearLineSegment(cursor_x, cursor_y, maxX(), current_background_color);
                 if (auto_next_line) {
                     cursor_x = 0;
                     cursor_y = static_cast<Pixel>(cursor_y + font_total_height);
@@ -399,7 +420,7 @@ public:
 
             if (cursor_y > static_cast<Pixel>(height() - font_height)) { return; }
 
-            drawGlyph(cursor_x, cursor_y, current_font->getGlyph(*text), current_color);
+            drawGlyph(cursor_x, cursor_y, current_font->getGlyph(*text), current_foreground_color, current_background_color);
 
             cursor_x = static_cast<Pixel>(cursor_x + font_width);
             if (cursor_x < width()) {
@@ -407,7 +428,7 @@ public:
                     cursor_x,
                     cursor_y,
                     static_cast<Pixel>(cursor_y + font_height),
-                    background_color);
+                    current_background_color);
             }
             cursor_x = static_cast<Pixel>(cursor_x + 1);
         }
@@ -417,7 +438,7 @@ private:
     // Drawing API backend
 
     /// @brief Clear rectangular line segment with background color
-    void clearLineSegment(Pixel cursor_x, Pixel cursor_y, Pixel end_x) noexcept {
+    void clearLineSegment(Pixel cursor_x, Pixel cursor_y, Pixel end_x, ColorType color) noexcept {
         if (cursor_x >= end_x) { return; }
 
         const auto segment_width = end_x - cursor_x;
@@ -428,7 +449,7 @@ private:
                 frame.setPixel(
                     static_cast<Pixel>(cursor_x + x),
                     static_cast<Pixel>(cursor_y + y),
-                    background_color);
+                    color);
             }
         }
     }
@@ -466,7 +487,7 @@ private:
     /// @param y Top position
     /// @param glyph Pointer to glyph bitmap data
     /// @param color_on Color for "on" pixels
-    void drawGlyph(Pixel x, Pixel y, const u8 *glyph, ColorType color_on) noexcept {
+    void drawGlyph(Pixel x, Pixel y, const u8 *glyph, ColorType color_on, ColorType color_off) noexcept {
         if (nullptr == glyph) {
             // Draw box for unknown character
             const auto x1 = static_cast<Pixel>(x + current_font->glyph_width - 1);
@@ -490,7 +511,7 @@ private:
                 frame.setPixel(
                     pixel_x,
                     static_cast<Pixel>(y + row),
-                    (glyph_byte >> row) & 1 ? color_on : background_color);
+                    (glyph_byte >> row) & 1 ? color_on : color_off);
             }
         }
     }

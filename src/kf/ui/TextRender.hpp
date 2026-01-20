@@ -114,13 +114,13 @@ private:
 
     /// @brief Begin high-contrast text region (special character 0x81)
     void beginContrastImpl() {
-        (void) write(0x81);
+        (void) write('\x81');
         contrast_mode = true;
     }
 
     /// @brief End high-contrast text region (special character 0x80)
     void endContrastImpl() {
-        (void) write(0x80);
+        (void) write('\x80');
         contrast_mode = false;
     }
 
@@ -263,7 +263,7 @@ private:
         } else {
             if (cursor_col >= settings.row_max_length) {
                 if (contrast_mode and buffer_cursor < settings.buffer.size()) {
-                    settings.buffer.data()[buffer_cursor] = 0x80;
+                    settings.buffer.data()[buffer_cursor] = '\x80';
                     buffer_cursor += 1;
                     contrast_mode = false;
                 }
