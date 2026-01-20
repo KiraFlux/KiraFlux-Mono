@@ -10,6 +10,7 @@
 #include "kf/core/type_traits.hpp"
 #include "kf/core/utility.hpp"
 #include "kf/memory/Array.hpp"
+#include "kf/memory/StringView.hpp"
 #include "kf/memory/ArrayList.hpp"
 #include "kf/memory/Queue.hpp"
 #include "kf/pattern/Singleton.hpp"
@@ -418,9 +419,9 @@ public:
         /// @brief Render current selection
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            render.variableBegin();
+            render.beginAltBlock();
             render.string(items[cursor].key);
-            render.variableEnd();
+            render.endAltBlock();
         }
 
     private:
@@ -593,7 +594,7 @@ public:
         /// @brief Render current value or step size based on mode
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            render.variableBegin();
+            render.beginAltBlock();
 
             if (is_step_setting_mode) {
                 render.arrow();
@@ -602,7 +603,7 @@ public:
                 displayNumber(render, value);
             }
 
-            render.variableEnd();
+            render.endAltBlock();
         }
 
     private:
