@@ -507,12 +507,17 @@ private:
             const auto pixel_x = static_cast<Pixel>(x + col);
             const u8 glyph_byte = glyph[col];
 
-            for (u8 row = 0; row < font_height; ++row) {
+            for (u8 row = 0; row < font_height; row += 1) {
                 frame.setPixel(
                     pixel_x,
                     static_cast<Pixel>(y + row),
                     (glyph_byte >> row) & 1 ? color_on : color_off);
             }
+
+            frame.setPixel(
+                pixel_x,
+                static_cast<Pixel>(y + font_height),
+                color_off);
         }
     }
 };
