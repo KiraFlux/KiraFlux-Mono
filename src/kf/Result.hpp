@@ -1,7 +1,10 @@
+// Copyright (c) 2026 KiraFlux
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include "kf/Option.hpp"
-#include "kf/attributes.hpp"
+#include "kf/core/attributes.hpp"
 
 namespace kf {
 

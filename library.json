@@ -1,11 +1,20 @@
 {
-  "name": "KiraFlux-Mono",
+  "name": "KiraFlux-Toolkit",
   "version": "0.0.0",
-  "description": "Common Tools",
-  "keywords": [],
+  "description": "Cross-platform embedded C++ utilities library",
+  "keywords": [
+    "embedded",
+    "c++",
+    "arduino",
+    "esp32",
+    "avr",
+    "graphics",
+    "ui",
+    "drivers"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/KiraFlux/KiraFlux-Mono.git"
+    "url": "https://github.com/KiraFlux/KiraFlux-Toolkit.git"
   },
   "authors": [
     {
@@ -15,7 +24,10 @@
   ],
   "license": "MIT",
   "frameworks": "arduino",
-  "platforms": "*",
+  "platforms": [
+    "atmelavr",
+    "espressif32"
+  ],
   "dependencies": {},
   "export": {
     "include": "src/kf"

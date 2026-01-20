@@ -1,9 +1,12 @@
+// Copyright (c) 2026 KiraFlux
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 // deprecated header for AVR
 #include <stdlib.h>// NOLINT(*-deprecated-headers)
 
-#include "kf/attributes.hpp"
+#include "kf/core/attributes.hpp"
 
 namespace kf {
 

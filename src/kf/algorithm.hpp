@@ -1,6 +1,8 @@
-#pragma once
+// Copyright (c) 2026 KiraFlux
+// SPDX-License-Identifier: MIT
 
-#include "kf/port/autoconfig.hpp"
+#pragma once
+#include "kf/core/config.hpp"
 
 #if kf_port_has_algorithm
 

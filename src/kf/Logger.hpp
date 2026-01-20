@@ -1,18 +1,21 @@
+// Copyright (c) 2026 KiraFlux
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include <Arduino.h>
 
-#include "kf/aliases.hpp"
-#include "kf/slice.hpp"
-#include "kf/tools/meta/Singleton.hpp"
+#include "kf/core/aliases.hpp"
+#include "kf/memory/Slice.hpp"
+#include "kf/pattern/Singleton.hpp"
 
 namespace kf {
 
 /// Logger
-struct Logger final : tools::Singleton<Logger> {
+struct Logger final : Singleton<Logger> {
     friend struct Singleton<Logger>;
 
-    using WriteHandler = void (*)(const slice<const char> &);
+    using WriteHandler = void (*)(Slice<const char>);
 
     WriteHandler writer{nullptr};
 
