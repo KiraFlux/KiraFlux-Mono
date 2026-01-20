@@ -15,6 +15,7 @@
 #include "kf/pattern/Singleton.hpp"
 #include "kf/ui/Event.hpp"
 
+
 namespace kf {
 
 /// @brief User interface framework with widget-based rendering
@@ -107,6 +108,15 @@ template<typename R> struct UI final : Singleton<UI<R>> {
         /// @param title Page title string
         explicit Page(const char *title) :
             title{title} {}
+
+        /// @brief Page behavior on entry
+        virtual void onEntry() {}
+
+        /// @brief Page behavior on leave
+        virtual void onExit() {}
+
+        /// @brief Page behavior on external update
+        virtual void onUpdate() {}
 
         /// @brief Add widget to this page
         /// @param widget Widget to add (must remain valid for page lifetime)
@@ -202,7 +212,12 @@ public:
     /// @brief Set active page for display
     /// @param page Page to make active (must remain valid)
     void bindPage(Page &page) {
+        if (nullptr != active_page) {
+            active_page->onExit();
+        }
+
         active_page = &page;
+        active_page->onEntry();
     }
 
     /// @brief Add event to processing queue
@@ -211,10 +226,16 @@ public:
         events.push(event);
     }
 
-    /// @brief Process pending events and render if needed
+    /// @brief Process active page update, pending events and render if needed
     /// @note Must be called regularly (e.g., in main loop)
     void poll() {
-        if (events.empty() or nullptr == active_page) {
+        if (nullptr == active_page) {
+            return;
+        }
+
+        active_page->onUpdate();
+
+        if (events.empty()) {
             return;
         }
 
@@ -248,7 +269,8 @@ public:
         explicit Button(
             Page &root,
             const char *label,
-            ClickHandler on_click) :
+            ClickHandler on_click
+        ) :
             Widget{root},
             label{label},
             on_click{kf::move(on_click)} {}
@@ -286,7 +308,8 @@ public:
         /// @param default_state Initial checkbox state
         explicit CheckBox(
             ChangeHandler change_handler,
-            bool default_state = false) :
+            bool default_state = false
+        ) :
             on_change{kf::move(change_handler)},
             state{default_state} {}
 
@@ -297,7 +320,8 @@ public:
         explicit CheckBox(
             Page &root,
             ChangeHandler change_handler,
-            bool default_state = false) :
+            bool default_state = false
+        ) :
             Widget{root},
             on_change{kf::move(change_handler)},
             state{default_state} {}
@@ -362,7 +386,8 @@ public:
         /// @param items Array of option items
         explicit ComboBox(
             T &val,
-            Container items) :
+            Container items
+        ) :
             items{move(items)},
             value{val} {}
 
@@ -373,7 +398,8 @@ public:
         explicit ComboBox(
             Page &root,
             T &val,
-            Container items) :
+            Container items
+        ) :
             Widget{root},
             items{move(items)},
             value{val} {}
@@ -417,23 +443,24 @@ public:
         /// @param val Value to display (read-only reference)
         explicit Display(
             Page &root,
-            const T &val) :
+            const T &val
+        ) :
             Widget{root},
             value{val} {}
 
         /// @brief Construct display widget (not attached to page)
         /// @param val Value to display (read-only reference)
         explicit Display(
-            const T &val) :
+            const T &val
+        ) :
             value{val} {}
 
         /// @brief Render value with appropriate formatting
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            kf_if_constexpr(kf::is_floating_point<T>::value) {
+            kf_if_constexpr (kf::is_floating_point<T>::value) {
                 render.number(static_cast<float>(value), 3);
-            }
-            else {
+            } else {
                 render.number(value);
             }
         }
@@ -458,7 +485,8 @@ public:
         explicit Labeled(
             Page &root,
             const char *label,
-            W impl) :
+            W impl
+        ) :
             Widget{root},
             label{label},
             impl{move(impl)} {}
@@ -509,7 +537,8 @@ public:
         explicit SpinBox(
             T &value,
             T step = static_cast<T>(1),
-            Mode mode = Mode::Arithmetic) :
+            Mode mode = Mode::Arithmetic
+        ) :
             mode{mode},
             value{value},
             step{step} {}
@@ -523,7 +552,8 @@ public:
             Page &root,
             T &value,
             T step = static_cast<T>(1),
-            Mode mode = Mode::Arithmetic) :
+            Mode mode = Mode::Arithmetic
+        ) :
             Widget{root},
             mode{mode},
             value{value},
@@ -568,10 +598,9 @@ public:
         /// @param render Renderer instance
         /// @param number Value to display
         void displayNumber(RenderImpl &render, const T &number) const {
-            kf_if_constexpr(kf::is_floating_point<T>::value) {
+            kf_if_constexpr (kf::is_floating_point<T>::value) {
                 render.number(static_cast<float>(number), 4);
-            }
-            else {
+            } else {
                 render.number(number);
             }
         }
@@ -604,7 +633,7 @@ public:
             } else {
                 step /= step_multiplier;
 
-                kf_if_constexpr(kf::is_integral<T>::value) {
+                kf_if_constexpr (kf::is_integral<T>::value) {
                     if (step < 1) { step = 1; }
                 }
             }
