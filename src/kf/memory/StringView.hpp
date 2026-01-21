@@ -88,7 +88,7 @@ public:
     kf_nodiscard constexpr StringView sub(usize pos, usize count) const noexcept {
         if (pos >= size_) { return StringView{}; }
         const usize actual_count = min(count, size_ - pos);
-        return StringView(data_ + pos, actual_count);
+        return {data_ + pos, actual_count};
     }
 
     /// @brief Create sub-string view from position to end
@@ -96,7 +96,7 @@ public:
     /// @return Sub-string view from pos to end, empty if out of bounds
     kf_nodiscard constexpr StringView subFrom(usize pos) const noexcept {
         if (pos >= size_) { return StringView{}; }
-        return StringView(data_ + pos, size_ - pos);
+        return {data_ + pos, size_ - pos};
     }
 
     /// @brief Check if string starts with prefix
@@ -181,7 +181,7 @@ public:
 
     /// @brief Remove prefix
     /// @param count Number of characters to remove from front
-    constexpr void remove_prefix(usize count) noexcept {
+    constexpr void removePrefix(usize count) noexcept {
         if (count > size_) { count = size_; }
         data_ += count;
         size_ -= count;
@@ -189,14 +189,14 @@ public:
 
     /// @brief Remove suffix
     /// @param count Number of characters to remove from back
-    constexpr void remove_suffix(usize count) noexcept {
+    constexpr void removeSuffix(usize count) noexcept {
         if (count > size_) { count = size_; }
         size_ -= count;
     }
 
     /// @brief Trim whitespace from beginning
     /// @return StringView with leading whitespace removed
-    kf_nodiscard constexpr StringView trim_start() const noexcept {
+    kf_nodiscard constexpr StringView trimStart() const noexcept {
         usize i = 0;
         while (i < size_ and isWhitespace(data_[i])) { ++i; }
         return subFrom(i);
@@ -204,17 +204,17 @@ public:
 
     /// @brief Trim whitespace from end
     /// @return StringView with trailing whitespace removed
-    kf_nodiscard constexpr StringView trim_end() const noexcept {
+    kf_nodiscard constexpr StringView trimEnd() const noexcept {
         if (size_ == 0) { return *this; }
         usize i = size_;
         while (i > 0 and isWhitespace(data_[i - 1])) { --i; }
-        return StringView(data_, i);
+        return {data_, i};
     }
 
     /// @brief Trim whitespace from both ends
     /// @return StringView with leading and trailing whitespace removed
     kf_nodiscard constexpr StringView trim() const noexcept {
-        return trim_start().trim_end();
+        return trimStart().trimStart();
     }
 
 private:
@@ -237,7 +237,7 @@ private:
 /// @param size Literal size (including null terminator)
 /// @return StringView of the literal
 inline constexpr StringView operator "" _sv(const char *str, usize size) noexcept {
-    return StringView(str, size - 1);  // Exclude null terminator
+    return {str, size - 1};  // Exclude null terminator
 }
 
 /// @brief Compare string views for equality

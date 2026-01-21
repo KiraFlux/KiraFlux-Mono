@@ -47,16 +47,6 @@ public:
         assign(StringView(str));
     }
 
-    /// @brief Construct from single character repeated
-    constexpr ArrayString(char ch, usize count) noexcept {
-        assign(ch, count);
-    }
-
-    /// @brief Get C-style string pointer
-    kf_nodiscard constexpr const char *c_str() const noexcept {
-        return buffer_.data();
-    }
-
     /// @brief Get string data pointer
     kf_nodiscard constexpr char *data() noexcept {
         return buffer_.data();
@@ -118,20 +108,10 @@ public:
         return *this;
     }
 
-    /// @brief Assign string from single character repeated
-    constexpr ArrayString &assign(char ch, usize count) noexcept {
-        size_ = min(count, N);
-        for (usize i = 0; i < size_; ++i) {
-            buffer_[i] = ch;
-        }
-        buffer_[size_] = '\0';
-        return *this;
-    }
-
     /// @brief Append character
     /// @param ch Character to append
     /// @return true if character was appended, false if buffer full
-    kf_nodiscard constexpr bool push_back(char ch) noexcept {
+    kf_nodiscard constexpr bool push(char ch) noexcept {
         if (size_ >= N) { return false; }
         buffer_[size_] = ch;
         ++size_;
@@ -141,7 +121,7 @@ public:
 
     /// @brief Remove last character
     /// @return true if character was removed, false if string empty
-    kf_nodiscard constexpr bool pop_back() noexcept {
+    kf_nodiscard constexpr bool pop() noexcept {
         if (size_ == 0) { return false; }
         --size_;
         buffer_[size_] = '\0';
@@ -249,7 +229,7 @@ public:
 
     /// @brief Trim whitespace from beginning
     /// @return Reference to this string
-    constexpr ArrayString &trim_start() noexcept {
+    constexpr ArrayString &trimStart() noexcept {
         usize i = 0;
         while (i < size_ && isWhitespace(buffer_[i])) {
             ++i;
@@ -269,7 +249,7 @@ public:
 
     /// @brief Trim whitespace from end
     /// @return Reference to this string
-    constexpr ArrayString &trim_end() noexcept {
+    constexpr ArrayString &trimEnd() noexcept {
         while (size_ > 0 && isWhitespace(buffer_[size_ - 1])) {
             --size_;
         }
@@ -280,7 +260,7 @@ public:
     /// @brief Trim whitespace from both ends
     /// @return Reference to this string
     constexpr ArrayString &trim() noexcept {
-        return trim_start().trim_end();
+        return trimStart().trimStart();
     }
 
     /// @brief Find character in string
@@ -323,14 +303,14 @@ public:
     /// @brief Check if string starts with prefix
     /// @param prefix Prefix to check
     /// @return true if string starts with prefix
-    kf_nodiscard constexpr bool starts_with(StringView prefix) const noexcept {
+    kf_nodiscard constexpr bool startsWith(StringView prefix) const noexcept {
         return view().startsWith(prefix);
     }
 
     /// @brief Check if string ends with suffix
     /// @param suffix Suffix to check
     /// @return true if string ends with suffix
-    kf_nodiscard constexpr bool ends_with(StringView suffix) const noexcept {
+    kf_nodiscard constexpr bool endsWith(StringView suffix) const noexcept {
         return view().endsWith(suffix);
     }
 
@@ -355,14 +335,13 @@ public:
     }
 
     /// @brief Assignment from string literal
-    template<usize M>
-    constexpr ArrayString &operator=(const char (&str)[M]) noexcept {
+    template<usize M> constexpr ArrayString &operator=(const char (&str)[M]) noexcept {
         return assign(StringView(str, min(M - 1, N)));
     }
 
     /// @brief Append operator for character
     constexpr ArrayString &operator+=(char ch) noexcept {
-        push_back(ch);
+        push(ch);
         return *this;
     }
 
@@ -395,7 +374,7 @@ public:
 
     /// @brief Implicit conversion to const char*
     kf_nodiscard constexpr operator const char *() const noexcept {
-        return c_str();
+        return data();
     }
 
 private:
