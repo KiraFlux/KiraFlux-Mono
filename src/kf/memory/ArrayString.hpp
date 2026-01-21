@@ -151,6 +151,83 @@ public:
         return append(StringView(str));
     }
 
+
+    /// @brief Append integer to string
+    /// @param value Integer value to append
+    /// @return Number of characters appended
+    kf_nodiscard usize append(i32 value) {
+        if (value == 0) {
+            return push('0') ? 1 : 0;
+        }
+
+        usize start_size = size_;
+
+        // Handle negative numbers
+        if (value < 0) {
+            (void) push('-');
+            value = -value;
+        }
+
+        // Convert to string in reverse order
+        char digits[12];
+        int digit_count = 0;
+
+        while (value > 0) {
+            digits[digit_count] = char('0' + (value % 10));
+            digit_count += 1;
+            value /= 10;
+        }
+
+        // Append in correct order
+        for (auto i = digit_count - 1; i >= 0; --i) {
+            if (not push(digits[i])) { break; }
+        }
+
+        return size_ - start_size;
+    }
+
+
+    /// @brief Append floating-point number to string
+    /// @param value Floating-point value
+    /// @param decimal_places Number of decimal places to show
+    /// @return Number of characters appended
+    kf_nodiscard usize append(f64 value, u8 decimal_places) {
+        usize start_size = size_;
+
+        // Handle special cases
+        if (isnan(value)) { return append("nan"); }
+        if (isinf(value)) { return append(value > 0 ? "inf" : "-inf"); }
+
+        // Handle negative numbers
+        if (value < 0) {
+            (void) push('-');
+            value = -value;
+        }
+
+        // Integer part
+        const auto int_part = static_cast<i32>(value);
+        (void) append(int_part);
+
+        // Decimal part
+        if (decimal_places > 0) {
+            (void) push('.');
+
+            f64 fraction = value - int_part;
+            for (auto i = 0; i < decimal_places; i += 1) {
+                fraction *= 10.0;
+                auto digit = static_cast<u8>(fraction);
+                (void) push('0' + digit);
+                fraction -= digit;
+
+                if (fraction < 1e-12) { // Avoid floating point issues
+                    break;
+                }
+            }
+        }
+
+        return size_ - start_size;
+    }
+
     /// @brief Insert string at position
     /// @param pos Position to insert at (0 <= pos <= size())
     /// @param view String to insert
