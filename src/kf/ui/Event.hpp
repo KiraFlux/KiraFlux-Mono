@@ -6,6 +6,7 @@
 #include "kf/core/aliases.hpp"
 #include "kf/core/attributes.hpp"
 
+
 namespace kf {// NOLINT(*-concat-nested-namespaces) // for c++11 capability
 namespace ui {
 
@@ -48,7 +49,8 @@ public:
         storage{
             static_cast<Storage>(
                 (static_cast<Storage>(type) & type_mask) |
-                (static_cast<Storage>(value) & value_mask))} {}
+                (static_cast<Storage>(value) & value_mask))
+        } {}
 
     /// @brief Get event type
     /// @return Event type enum value
@@ -65,27 +67,26 @@ public:
 
     // Predefined event instances
 
-    /// @brief Create None event
-    /// @return None event instance
-    static constexpr Event None() { return Event{Type::None}; }
+    /// @brief Create none event
+    /// @return none event instance
+    static constexpr Event none() { return Event{Type::None}; }
 
-    /// @brief Create Update event (forces redraw)
-    /// @return Update event instance
-    static constexpr Event Update() { return Event{Type::Update}; }
+    /// @brief Create update event (forces redraw)
+    /// @return update event instance
+    static constexpr Event update() { return Event{Type::Update}; }
 
-    /// @brief Create PageCursorMove event with offset
+    /// @brief Create pageCursorMove event with offset
     /// @param offset Cursor movement offset
-    /// @return PageCursorMove event instance
-    static constexpr Event PageCursorMove(Value offset) { return Event{Type::PageCursorMove, offset}; }
+    /// @return pageCursorMove event instance
+    static constexpr Event pageCursorMove(Value offset) { return Event{Type::PageCursorMove, offset}; }
 
-    /// @brief Create WidgetClick event
-    /// @return WidgetClick event instance
-    static constexpr Event WidgetClick() { return Event{Type::WidgetClick}; }
+    /// @brief Create widgetClick event
+    /// @return widgetClick event instance
+    static constexpr Event widgetClick() { return Event{Type::WidgetClick}; }
 
-    /// @brief Create WidgetValueChange event with delta
-    /// @param delta Value change amount
-    /// @return WidgetValueChange event instance
-    static constexpr Event WidgetValueChange(Value delta) { return Event{Type::WidgetValueChange, delta}; }
+    /// @brief Create widgetValue event with delta
+    /// @return widgetValue event instance
+    static constexpr Event widgetValue(Value value) { return Event{Type::WidgetValueChange, value}; }
 };
 
 }// namespace ui
