@@ -9,6 +9,7 @@
 #include "kf/core/pixel_traits.hpp"
 #include "kf/math/units.hpp"
 
+
 namespace kf::gfx {
 
 /// @brief Dynamic display region with runtime dimensions
@@ -67,7 +68,8 @@ public:
     kf_nodiscard static Result<DynamicImage, Error> create(
         BufferType *buffer, Pixel stride,
         Pixel width, Pixel height,
-        Pixel offset_x, Pixel offset_y) noexcept {
+        Pixel offset_x, Pixel offset_y
+    ) noexcept {
         if (nullptr == buffer) {
             return Error::BufferNotInit;
         }
@@ -88,7 +90,8 @@ public:
     explicit DynamicImage(
         BufferType *buffer, Pixel stride,
         Pixel width, Pixel height,
-        Pixel offset_x, Pixel offset_y) noexcept :
+        Pixel offset_x, Pixel offset_y
+    ) noexcept:
         buffer{buffer},
         stride{stride},
         offset_x{offset_x},
@@ -104,7 +107,8 @@ public:
     /// @return Sub-view or error if out of bounds
     kf_nodiscard Result<DynamicImage, Error> sub(
         Pixel sub_width, Pixel sub_height,
-        Pixel sub_offset_x, Pixel sub_offset_y) const noexcept {
+        Pixel sub_offset_x, Pixel sub_offset_y
+    ) const noexcept {
         if (sub_offset_x >= width or sub_offset_y >= height) {
             return Error::OffsetOutOfBounds;
         }
@@ -123,10 +127,13 @@ public:
     /// @warning No bounds checking - caller must ensure parameters are valid
     kf_nodiscard DynamicImage subUnchecked(
         Pixel sub_width, Pixel sub_height,
-        Pixel sub_offset_x, Pixel sub_offset_y) {
-        return DynamicImage{buffer, stride, sub_width, sub_height,
-                            static_cast<Pixel>(offset_x + sub_offset_x),
-                            static_cast<Pixel>(offset_y + sub_offset_y)};
+        Pixel sub_offset_x, Pixel sub_offset_y
+    ) {
+        return DynamicImage{
+            buffer, stride, sub_width, sub_height,
+            static_cast<Pixel>(offset_x + sub_offset_x),
+            static_cast<Pixel>(offset_y + sub_offset_y)
+        };
     }
 
     /// @brief Checks if X coordinate is within view bounds
@@ -155,6 +162,24 @@ public:
     /// @param color Fill color value
     inline void fill(ColorType color) const noexcept {
         Traits::fill(buffer, stride, offset_x, offset_y, width, height, color);
+    }
+
+    /// @brief Fills rect region with solid color
+    /// @param color Fill color value
+    void fill(
+        Pixel x0, Pixel y0,
+        Pixel x1, Pixel y1,
+        ColorType color
+    ) const noexcept {
+        Traits::fill(
+            buffer,
+            stride,
+            static_cast<Pixel>(offset_x + x0),
+            static_cast<Pixel>(offset_y + y0),
+            static_cast<Pixel>(x1 - x0 + 1),
+            static_cast<Pixel>(y1 - y0 + 1),
+            color
+        );
     }
 
 private:
