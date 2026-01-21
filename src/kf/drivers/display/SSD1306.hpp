@@ -9,30 +9,41 @@
 #include "kf/core/pixel_traits.hpp"
 #include "kf/drivers/display/DisplayDriver.hpp"
 
+
 namespace kf {
 
 /// @brief SSD1306 OLED display driver for 128x64 monochrome panels
 struct SSD1306 : DisplayDriver<SSD1306, PixelFormat::Monochrome, 128, 64> {
     friend Base;
 
+    struct Config {
+        /// @brief Wire clock frequency [Hz]
+        u32 i2c_clock_frequency;
+
+        /// @brief I2C device address (default 0x3C)
+        u8 address;
+
+        explicit Config(u32 clock_frequency, u8 address = 0x3C) :
+            i2c_clock_frequency{clock_frequency}, address{address} {}
+    };
+
 private:
-    /// @brief I2C device address (default 0x3C)
-    const u8 address;
+    const Config &config;
+    TwoWire &wire;
 
 public:
     /// @brief Construct SSD1306 driver instance
-    /// @param address I2C address (typically 0x3C or 0x3D)
-    explicit SSD1306(u8 address = 0x3C) :
-        address{address} {}
+    explicit SSD1306(const Config &config, TwoWire &wire) :
+        config{config}, wire{wire} {}
 
     /// @brief Set display contrast level
     /// @param value Contrast value (0-255)
     void setContrast(u8 value) const {
-        Wire.beginTransmission(address);
-        (void) Wire.write(CommandMode);
-        (void) Wire.write(Contrast);
-        (void) Wire.write(value);
-        (void) Wire.endTransmission();
+        wire.beginTransmission(config.address);
+        (void) wire.write(CommandMode);
+        (void) wire.write(Contrast);
+        (void) wire.write(value);
+        (void) wire.endTransmission();
     }
 
     /// @brief Enable or disable display power
@@ -90,16 +101,19 @@ private:
             SetComPins, 0x12,
 
             // Multiplex (64 lines)
-            SetMultiplex, 0x3F};
+            SetMultiplex, 0x3F
+        };
 
-        if (not Wire.begin()) { return false; }
+        if (not wire.begin()) { return false; }
 
-        Wire.beginTransmission(address);
+        if (not wire.setClock(config.i2c_clock_frequency)) { return false; }
 
-        const auto written = Wire.write(init_commands, sizeof(init_commands));
+        wire.beginTransmission(config.address);
+
+        const auto written = wire.write(init_commands, sizeof(init_commands));
         if (sizeof(init_commands) != written) { return false; }
 
-        const u8 end_transmission_code = Wire.endTransmission();
+        const u8 end_transmission_code = wire.endTransmission();
         return 0 == end_transmission_code;
     }
 
@@ -118,18 +132,18 @@ private:
             Traits::template pages<phys_height> - 1,
         };
 
-        Wire.beginTransmission(address);
-        (void) Wire.write(set_area_commands, sizeof(set_area_commands));
-        (void) Wire.endTransmission();
+        wire.beginTransmission(config.address);
+        (void) wire.write(set_area_commands, sizeof(set_area_commands));
+        (void) wire.endTransmission();
 
         auto p = software_screen_buffer;
         const auto *end = p + sizeof(software_screen_buffer);
 
         while (p < end) {
-            Wire.beginTransmission(address);
-            (void) Wire.write(Command::DataMode);
-            (void) Wire.write(p, packet_size);
-            (void) Wire.endTransmission();
+            wire.beginTransmission(config.address);
+            (void) wire.write(Command::DataMode);
+            (void) wire.write(p, packet_size);
+            (void) wire.endTransmission();
 
             p += packet_size;
         }
@@ -180,10 +194,10 @@ private:
     /// @brief Send single command to display
     /// @param command SSD1306 command byte
     void sendCommand(Command command) const {
-        Wire.beginTransmission(address);
-        (void) Wire.write(OneCommandMode);
-        (void) Wire.write(static_cast<u8>(command));
-        (void) Wire.endTransmission();
+        wire.beginTransmission(config.address);
+        (void) wire.write(OneCommandMode);
+        (void) wire.write(static_cast<u8>(command));
+        (void) wire.endTransmission();
     }
 };
 
