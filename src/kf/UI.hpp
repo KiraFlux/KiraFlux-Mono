@@ -363,11 +363,13 @@ public:
 
     /// @brief Combo box for selecting from predefined options
     /// @tparam T Value type for options
-    /// @tparam N Number of options (must be ≥ 1)
+    /// @tparam N Number of options (must be >= 1)
     template<typename T, usize N> struct ComboBox final : Widget {
         static_assert(N >= 1, "N >= 1");
 
-        using Value = T;///< Option value type
+        using Value = T;///< ComboBox value type
+
+        using ChangeHandler = Function<void(T)>;
 
         /// @brief Combo box option item
         struct Item {
@@ -378,40 +380,40 @@ public:
         using Container = Array<Item, N>;///< Container type for options
 
     private:
+        ChangeHandler on_change;
         const Container items;///< Available options
-        T &value;             ///< Reference to current selected value (external storage)
         int cursor{0};        ///< Current selection index
 
     public:
         /// @brief Construct combo box (not attached to page)
-        /// @param val Reference to variable storing current value
         /// @param items Array of option items
         explicit ComboBox(
-            T &val,
-            Container items
+            Container items,
+            ChangeHandler on_change
         ) :
-            items{move(items)},
-            value{val} {}
+            items{(items)},
+            on_change{(on_change)} {}
 
         /// @brief Construct combo box and add to page
         /// @param root Page to add combo box to
-        /// @param val Reference to variable storing current value
         /// @param items Array of option items
         explicit ComboBox(
             Page &root,
-            T &val,
-            Container items
+            Container items,
+            ChangeHandler on_change
         ) :
             Widget{root},
-            items{move(items)},
-            value{val} {}
+            items{(items)},
+            on_change{(on_change)} {}
 
         /// @brief Change selection based on direction
         /// @param direction Navigation direction (positive/negative)
         /// @return true (redraw required after selection change)
         bool onValue(Event::Value direction) override {
             moveCursor(direction);
-            value = items[cursor].value;
+            if (nullptr != on_change) {
+                on_change(items[cursor].value);
+            }
             return true;
         }
 

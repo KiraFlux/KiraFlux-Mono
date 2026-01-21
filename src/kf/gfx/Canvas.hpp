@@ -448,13 +448,13 @@ private:
         if (cursor_x >= end_x) { return; }
 
         const auto segment_width = end_x - cursor_x;
-        const auto segment_height = current_font->glyph_height;
+        const auto segment_height = current_font->heightTotal();
 
-        for (auto y = 0; y < segment_height; y += 1) {
-            for (auto x = 0; x < segment_width; x += 1) {
+        for (auto y = cursor_y; y < segment_height + cursor_y; y += 1) {
+            for (auto x = cursor_x; x < segment_width + cursor_x; x += 1) {
                 frame.setPixel(
-                    static_cast<Pixel>(cursor_x + x),
-                    static_cast<Pixel>(cursor_y + y),
+                    static_cast<Pixel>(x),
+                    static_cast<Pixel>(y),
                     color);
             }
         }
