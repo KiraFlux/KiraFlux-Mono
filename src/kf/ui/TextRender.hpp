@@ -21,142 +21,128 @@ namespace ui {
 /// @brief Text-based UI rendering system for terminal/console output
 /// @note Implements Render CRTP interface for character-based display
 struct TextRender : Render<TextRender> {
-    friend struct Render<TextRender>;
+    friend Base;
 
-    using GlyphUnit = u8;///< Text interface measurement unit in glyphs
+    using Glyph = u8;///< Text interface measurement unit in glyphs
 
     /// @brief Text renderer configuration settings
-    struct Settings {
+    struct Config {
         using RenderHandler = Function<void(StringView)>;///< Render completion callback type
 
-        static constexpr auto rows_default{4}; ///< Default row count
-        static constexpr auto cols_default{16};///< Default column count
-
-        GlyphUnit row_max_length{cols_default}; ///< Maximum characters per row
-        GlyphUnit rows_total{rows_default};     ///< Total available rows in display
+        Glyph row_max_length{16}; ///< Maximum characters per row
+        Glyph rows_total{4};     ///< Total available rows in display
         Slice<char> buffer{};                     ///< Output buffer for rendered text
         RenderHandler on_render_finish{nullptr};///< Callback invoked when rendering completes
+        Glyph float_places{2};
+        Glyph double_places{4};
 
-        Settings(const Settings &) = delete;
+        Config(const Config &) = delete;
     };
 
-    Settings settings{};///< Current renderer configuration
+    Config config{};///< Current renderer configuration
 
 private:
     usize buffer_cursor{0};   ///< Current position in output buffer
-    GlyphUnit cursor_row{0};  ///< Current row position in virtual display
-    GlyphUnit cursor_col{0};  ///< Current column position in current row
+    Glyph cursor_row{0};  ///< Current row position in virtual display
+    Glyph cursor_col{0};  ///< Current column position in current row
     bool contrast_mode{false};///< Current contrast mode state
 
-    /// @brief Calculate remaining widget capacity
-    /// @return Number of widgets that can still be rendered
     kf_nodiscard usize widgetsAvailableImpl() const {
-        return settings.rows_total - cursor_row;
+        return config.rows_total - cursor_row;
     }
 
-    /// @brief Prepare renderer for new frame
     void prepareImpl() {
         buffer_cursor = 0;
     }
 
-    /// @brief Finalize current frame and invoke callback
     void finishImpl() {
-        if (nullptr == settings.buffer.data()) {
+        if (nullptr == config.buffer.data()) {
             return;
         }
 
         cursor_row = 0;
         cursor_col = 0;
-        settings.buffer.data()[buffer_cursor - 1] = '\0';
+        config.buffer.data()[buffer_cursor - 1] = '\0';
 
-        if (nullptr != settings.on_render_finish) {
-            settings.on_render_finish({settings.buffer.data(), buffer_cursor});
+        if (nullptr != config.on_render_finish) {
+            config.on_render_finish({config.buffer.data(), buffer_cursor});
         }
     }
 
-    /// @brief Render page title line
-    /// @param title Title text to display
     void titleImpl(StringView title) {
         (void) print(title);
         (void) write('\n');
     }
 
-    /// @brief Render text string
-    /// @param str String to display
-    void stringImpl(StringView str) {
+    void checkboxImpl(bool enabled) {
+        (void) print(enabled ? "==[ 1 ]" : "[ 0 ]--");
+    }
+
+    void valueImpl(StringView str) {
         (void) print(str);
     }
 
-    /// @brief Render integer value
-    /// @param integer Integer to display
-    void numberImpl(i32 integer) {
+    void valueImpl(bool value) {
+        (void) print(value ? "true" : "false");
+    }
+
+    void valueImpl(i32 integer) {
         (void) print(integer);
     }
 
-    /// @brief Render floating-point value
-    /// @param real Floating-point number to display
-    /// @param rounding Number of decimal places to show
-    void numberImpl(f64 real, u8 rounding) {
-        (void) print(real, rounding);
+    void valueImpl(f32 real) {
+        (void) print(real, config.float_places);
     }
 
-    /// @brief Render arrow indicator (->)
+    void valueImpl(f64 real) {
+        (void) print(real, config.double_places);
+    }
+
     void arrowImpl() {
         (void) write('-');
         (void) write('>');
         (void) write(' ');
     }
 
-    /// @brief Render colon separator (: )
     void colonImpl() {
         (void) write(':');
         (void) write(' ');
     }
 
-    /// @brief Begin high-contrast text region (special character 0x81)
     void beginContrastImpl() {
         (void) write('\x81');
         contrast_mode = true;
     }
 
-    /// @brief End high-contrast text region (special character 0x80)
     void endContrastImpl() {
         (void) write('\x80');
         contrast_mode = false;
     }
 
-    /// @brief Begin standard block marker ([)
     void beginBlockImpl() {
         (void) write('[');
     }
 
-    /// @brief End standard block marker (])
     void endBlockImpl() {
         (void) write(']');
     }
 
-    /// @brief Begin alternative block marker (<)
     void beginAltBlockImpl() {
         (void) write('<');
     }
 
-    /// @brief End alternative block marker (>)
     void endAltBlockImpl() {
         (void) write('>');
     }
 
-    /// @brief Begin widget rendering (no-op in text renderer)
-    /// @param index Widget index (unused)
     void beginWidgetImpl(usize) {}
 
-    /// @brief End widget rendering (newline)
     void endWidgetImpl() {
         (void) write('\n');
     }
 
-    /// @brief Print null-terminated string to buffer
-    /// @param str String to print (nullptr prints "nullptr")
-    /// @return Number of characters written
+protected:
+
     kf_nodiscard usize print(StringView str) {
         const char *s = str.data();
 
@@ -252,11 +238,11 @@ private:
     /// @return 1 if character written, 0 otherwise
     /// @note Handles line wrapping, row limits, and contrast mode
     kf_nodiscard usize write(char c) {
-        if (buffer_cursor >= settings.buffer.size()) {
+        if (buffer_cursor >= config.buffer.size()) {
             return 0;
         }
 
-        if (cursor_row >= settings.rows_total) {
+        if (cursor_row >= config.rows_total) {
             return 0;
         }
 
@@ -264,9 +250,9 @@ private:
             cursor_row += 1;
             cursor_col = 0;
         } else {
-            if (cursor_col >= settings.row_max_length) {
-                if (contrast_mode and buffer_cursor < settings.buffer.size()) {
-                    settings.buffer.data()[buffer_cursor] = '\x80';
+            if (cursor_col >= config.row_max_length) {
+                if (contrast_mode and buffer_cursor < config.buffer.size()) {
+                    config.buffer.data()[buffer_cursor] = '\x80';
                     buffer_cursor += 1;
                     contrast_mode = false;
                 }
@@ -274,7 +260,7 @@ private:
             }
             cursor_col += 1;
         }
-        settings.buffer.data()[buffer_cursor] = c;
+        config.buffer.data()[buffer_cursor] = c;
         buffer_cursor += 1;
         return 1;
     }

@@ -50,10 +50,9 @@ template<typename R> struct UI final : Singleton<UI<R>> {
         /// @return true if redraw required, false otherwise
         virtual bool onClick() { return false; }
 
-        /// @brief Handle value change event
-        /// @param direction Change direction (positive/negative)
+        /// @brief Handle value event
         /// @return true if redraw required, false otherwise
-        virtual bool onChange(int direction) { return false; }
+        virtual bool onValue(Event::Value value) { return false; }
 
         /// @brief External widget rendering with focus handling
         /// @param render Renderer instance to use for drawing
@@ -95,19 +94,19 @@ template<typename R> struct UI final : Singleton<UI<R>> {
             /// @param render Renderer instance
             void doRender(RenderImpl &render) const override {
                 render.arrow();
-                render.string(target.title);
+                render.value(target.title);
             }
         };
 
         ArrayList<Widget *> widgets{};///< List of widgets on this page
-        const char *title;            ///< Page title displayed in header
+        StringView title;            ///< Page title displayed in header
         usize cursor{0};              ///< Current widget cursor position (focused widget index)
         PageSetter to_this{*this};    ///< Navigation widget to this page
 
     public:
         /// @brief Construct page with title
         /// @param title Page title string
-        explicit Page(const char *title) :
+        explicit Page(StringView title) :
             title{title} {}
 
         /// @brief Page behavior on entry
@@ -170,7 +169,7 @@ template<typename R> struct UI final : Singleton<UI<R>> {
                 }
                 case Event::Type::WidgetValueChange: {
                     if (totalWidgets() > 0) {
-                        return widgets[cursor]->onChange(event.value());
+                        return widgets[cursor]->onValue(event.value());
                     }
                 }
             }
@@ -206,8 +205,8 @@ private:
 public:
     /// @brief Access renderer configuration settings
     /// @return Reference to renderer settings structure
-    typename RenderImpl::Settings &renderSettings() {
-        return render_system.settings;
+    typename RenderImpl::Config &renderConfig() {
+        return render_system.config;
     }
 
     /// @brief Set active page for display
@@ -261,7 +260,7 @@ public:
         using ClickHandler = Function<void()>;///< Button click handler type
 
     private:
-        const char *label;    ///< Button label text
+        StringView label;    ///< Button label text
         ClickHandler on_click;///< Click event handler
 
     public:
@@ -271,7 +270,7 @@ public:
         /// @param on_click Function called when button is clicked
         explicit Button(
             Page &root,
-            const char *label,
+            StringView label,
             ClickHandler on_click
         ) :
             Widget{root},
@@ -292,7 +291,7 @@ public:
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
             render.beginBlock();
-            render.string(label);
+            render.value(label);
             render.endBlock();
         }
     };
@@ -337,21 +336,21 @@ public:
         }
 
         /// @brief Set state based on direction
-        /// @param direction Positive sets true, negative sets false
+        /// @param value Positive sets true, negative sets false
         /// @return true (redraw required after state change)
-        bool onChange(int direction) override {
-            setState(direction > 0);
+        bool onValue(Event::Value value) override {
+            setState(value > 0);
             return true;
         }
 
         /// @brief Render checkbox with visual state indicator
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            render.string(state ? "[ 1 ]==" : "--[ 0 ]");
+            render.checkbox(state);
         }
 
     private:
-        /// @brief Update checkbox state and notify handler
+        /// @brief update checkbox state and notify handler
         /// @param new_state New checkbox state
         void setState(bool new_state) {
             state = new_state;
@@ -372,7 +371,7 @@ public:
 
         /// @brief Combo box option item
         struct Item {
-            const char *key;///< Display name for option
+            StringView key;///< Display name for option
             T value;        ///< Value associated with option
         };
 
@@ -410,7 +409,7 @@ public:
         /// @brief Change selection based on direction
         /// @param direction Navigation direction (positive/negative)
         /// @return true (redraw required after selection change)
-        bool onChange(int direction) override {
+        bool onValue(Event::Value direction) override {
             moveCursor(direction);
             value = items[cursor].value;
             return true;
@@ -420,7 +419,7 @@ public:
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
             render.beginAltBlock();
-            render.string(items[cursor].key);
+            render.value(items[cursor].key);
             render.endAltBlock();
         }
 
@@ -461,21 +460,7 @@ public:
         /// @brief Render value with appropriate formatting
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            display(render, value);
-        }
-
-    private:
-
-        static void display(RenderImpl &render, float value) {
-            render.number(static_cast<float>(value), 3);
-        }
-
-        static void display(RenderImpl &render, int value) {
-            render.number(value);
-        }
-
-        static void display(RenderImpl &render, StringView value) {
-            render.string(value);
+            render.value(value);
         }
     };
 
@@ -487,7 +472,7 @@ public:
         using Impl = W;///< Type of wrapped widget implementation
 
     private:
-        const char *label;///< Label text
+        StringView label;///< Label text
         W impl;           ///< Wrapped widget instance
 
     public:
@@ -497,7 +482,7 @@ public:
         /// @param impl Widget to wrap with label
         explicit Labeled(
             Page &root,
-            const char *label,
+            StringView label,
             W impl
         ) :
             Widget{root},
@@ -509,14 +494,14 @@ public:
         bool onClick() override { return impl.onClick(); }
 
         /// @brief Forward change event to wrapped widget
-        /// @param direction Change direction
-        /// @return Result from wrapped widget's onChange()
-        bool onChange(int direction) override { return impl.onChange(direction); }
+        /// @param value Change direction
+        /// @return Result from wrapped widget's onValue()
+        bool onValue(Event::Value value) override { return impl.onValue(value); }
 
         /// @brief Render label followed by wrapped widget
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const override {
-            render.string(label);
+            render.value(label);
             render.colon();
             impl.doRender(render);
         }
@@ -582,7 +567,7 @@ public:
         /// @brief Adjust value or step based on current mode
         /// @param direction Adjustment direction (positive/negative)
         /// @return true (redraw required after adjustment)
-        bool onChange(int direction) override {
+        bool onValue(Event::Value direction) override {
             if (is_step_setting_mode) {
                 changeStep(direction);
             } else {
@@ -598,25 +583,15 @@ public:
 
             if (is_step_setting_mode) {
                 render.arrow();
-                displayNumber(render, step);
+                render.value(step);
             } else {
-                displayNumber(render, value);
+                render.value(value);
             }
 
             render.endAltBlock();
         }
 
     private:
-        /// @brief Display number with appropriate formatting
-        /// @param render Renderer instance
-        /// @param number Value to display
-        void displayNumber(RenderImpl &render, const T &number) const {
-            kf_if_constexpr (kf::is_floating_point<T>::value) {
-                render.number(static_cast<float>(number), 4);
-            } else {
-                render.number(number);
-            }
-        }
 
         /// @brief Adjust controlled value based on mode and direction
         /// @param direction Adjustment direction (positive/negative)

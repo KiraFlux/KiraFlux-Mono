@@ -19,6 +19,8 @@ namespace ui {
 template<typename Impl> struct Render {
     friend Impl;
 
+    using Base = Render;
+
     // Control operations
 
     /// @brief Prepare render buffer for new frame
@@ -44,18 +46,12 @@ template<typename Impl> struct Render {
     /// @param title Title text string
     void title(StringView title) { impl().titleImpl(title); }
 
-    /// @brief Render text string
-    /// @param str String to display
-    void string(StringView str) { impl().stringImpl(str); }
+    /// @brief Render checkbox
+    void checkbox(bool enabled) { impl().checkboxImpl(enabled); }
 
-    /// @brief Render integer number
-    /// @param integer Integer value to display
-    void number(i32 integer) { impl().numberImpl(integer); }
-
-    /// @brief Render floating-point number
-    /// @param real Floating-point value to display
-    /// @param rounding Number of decimal places to show
-    void number(f64 real, u8 rounding) { impl().numberImpl(real, rounding); }
+    /// @brief Render value
+    /// @param value Value to display
+    template<typename T> void value(T value) { impl().valueImpl(value); }
 
     // Decoration and layout
 
