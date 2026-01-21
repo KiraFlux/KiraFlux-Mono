@@ -3,14 +3,12 @@
 
 #pragma once
 
-// for avr capability
-#include <math.h>// NOLINT(*-deprecated-headers)
+#include <math.h> // NOLINT(*-deprecated-headers) // for AVR capability
 
 #include "kf/Function.hpp"
 #include "kf/core/aliases.hpp"
 #include "kf/core/attributes.hpp"
-#include "kf/memory/Array.hpp"
-#include "kf/memory/Slice.hpp"
+#include "kf/memory/ArrayString.hpp"
 #include "kf/memory/StringView.hpp"
 #include "kf/ui/Render.hpp"
 
@@ -19,219 +17,187 @@ namespace kf {// NOLINT(*-concat-nested-namespaces) // for c++11 capability
 namespace ui {
 
 /// @brief Text-based UI rendering system for terminal/console output
-/// @tparam N text buffer capacity
+/// @tparam N Text buffer capacity in characters
 /// @note Implements Render CRTP interface for character-based display
 template<usize N> struct TextBufferRender : Render<TextBufferRender<N>> {
     friend struct Render<TextBufferRender<N>>;
 
-    using Glyph = u8;///< Text interface measurement unit in glyphs
+    using Glyph = u8; ///< Text interface measurement unit in glyphs
 
     /// @brief Text renderer configuration settings
     struct Config {
-        using RenderHandler = Function<void(StringView)>;///< Render completion callback type
+        Function<void(StringView)> on_render_finish{nullptr}; ///< Callback invoked when rendering completes
 
-        Glyph row_max_length{16}; ///< Maximum characters per row
-        Glyph rows_total{4};     ///< Total available rows in display
-        RenderHandler on_render_finish{nullptr};///< Callback invoked when rendering completes
-        Glyph float_places{2};
-        Glyph double_places{4};
+        Glyph row_max_length{16};       ///< Maximum characters per row
+        Glyph rows_total{4};            ///< Total available rows in display
+        Glyph float_places{2};          ///< Decimal places for float
+        Glyph double_places{4};         ///< Decimal places for double
 
         Config(const Config &) = delete;
     };
 
-    Config config{};///< Current renderer configuration
+    Config config{};          ///< Current renderer configuration
+    ArrayString<N> buffer{};  ///< Output buffer for rendered text
 
 private:
-    ArrayString<N> buffer{};
-    Glyph cursor_row{0};  ///< Current row position in virtual display
-    Glyph cursor_col{0};  ///< Current column position in current row
-    bool contrast_mode{false};///< Current contrast mode state
+    /// @brief Cursor state for tracking rendering position
+    struct Cursor {
+        Glyph row{0};        ///< Current row position
+        Glyph col{0};        ///< Current column position
+        bool contrast{false};///< Whether we're in contrast mode
+
+        /// @brief Reset cursor to beginning
+        void reset() { *this = {}; }
+
+        /// @brief Move to next line
+        void newline() {
+            row += 1;
+            col = 0;
+        }
+
+        /// @brief Check if we can write more characters in current row
+        /// @param row_max_length Maximum columns per row
+        kf_nodiscard bool canWrite(Glyph row_max_length) const {
+            return col < row_max_length;
+        }
+
+        /// @brief Advance cursor position by N characters
+        void advance(Glyph count, Glyph row_max_length) {
+            col += count;
+            if (col >= row_max_length) {
+                newline();
+            }
+        }
+    } cursor;
+
+    /// @brief Helper to write character with cursor tracking
+    /// @param ch Character to write
+    void writeChar(char ch) {
+        if (buffer.full()) { return; }
+        if (cursor.row >= config.rows_total) { return; }
+
+        switch (ch) {
+            case '\n':cursor.newline();
+                break;
+
+            case '\x81': // Start contrast
+                cursor.contrast = true;
+                break;
+
+            case '\x80': // End contrast
+                cursor.contrast = false;
+                break;
+
+            default:
+                if (not cursor.canWrite(config.row_max_length)) {
+                    // If row is full, and we're in contrast mode, exit it
+                    if (cursor.contrast) {
+                        (void) buffer.push('\x80');
+                        cursor.contrast = false;
+                    }
+                    return;
+                }
+                cursor.advance(1, config.row_max_length);
+                break;
+        }
+
+        (void) buffer.push(ch);
+    }
+
+    /// @brief Write string with cursor tracking
+    void writeString(StringView str) {
+        for (char ch: str) {
+            writeChar(ch);
+        }
+    }
+
+    void writeReal(f64 real, u8 rounding) {
+        if (isnan(real)) {
+            writeString("nan");
+            return;
+        }
+        if (isinf(real)) {
+            writeString("inf");
+            return;
+        }
+
+        ArrayString<24> temp; // Enough for double with precision
+        (void) temp.append(real, rounding);
+        writeString(temp.view());
+    }
+
+
+    // Render Interface Implementation
 
     kf_nodiscard usize widgetsAvailableImpl() const {
-        return config.rows_total - cursor_row;
+        // Subtract 1 for title row
+        return (config.rows_total > cursor.row + 1)
+               ? config.rows_total - cursor.row - 1
+               : 0;
     }
 
     void prepareImpl() {
         buffer.clear();
+        cursor.reset();
     }
 
     void finishImpl() {
-        if (nullptr == buffer.data()) {
-            return;
-        }
-
-        cursor_row = 0;
-        cursor_col = 0;
-
-        buffer.data()[buffer.size() - 1] = '\0';
-
-        if (nullptr != config.on_render_finish) {
+        if (config.on_render_finish) {
             config.on_render_finish(buffer.view());
         }
     }
 
     void titleImpl(StringView title) {
-        print(title);
-        write('\n');
+        writeString(title);
+        writeChar('\n');
     }
 
-    void checkboxImpl(bool enabled) { print(enabled ? "==[ 1 ]" : "[ 0 ]--"); }
-
-    void valueImpl(StringView str) { print(str); }
-
-    void valueImpl(bool value) { print(value ? "true" : "false"); }
-
-    void valueImpl(i32 integer) { print(integer); }
-
-    void valueImpl(f32 real) { print(real, config.float_places); }
-
-    void valueImpl(f64 real) { print(real, config.double_places); }
-
-    void arrowImpl() {
-        write('-');
-        write('>');
-        write(' ');
+    void checkboxImpl(bool enabled) {
+        writeString(enabled ? "==[ 1 ]" : "[ 0 ]--");
     }
 
-    void colonImpl() {
-        write(':');
-        write(' ');
+    // Value rendering implementations
+    void valueImpl(StringView str) { writeString(str); }
+
+    void valueImpl(bool value) {
+        writeString(value ? "true" : "false");
     }
 
-    void beginContrastImpl() {
-        write('\x81');
-        contrast_mode = true;
+    void valueImpl(i32 integer) {
+        ArrayString<12> temp; // Enough for 32-bit int
+        (void) temp.append(integer);
+        writeString(temp.view());
     }
 
-    void endContrastImpl() {
-        write('\x80');
-        contrast_mode = false;
+    void valueImpl(f32 real) {
+        writeReal(static_cast<f64>(real), config.float_places);
     }
 
-    void beginBlockImpl() { write('['); }
-
-    void endBlockImpl() { write(']'); }
-
-    void beginAltBlockImpl() { write('<'); }
-
-    void endAltBlockImpl() { write('>'); }
-
-    void beginWidgetImpl(usize) {}
-
-    void endWidgetImpl() { write('\n'); }
-
-protected:
-
-    void print(StringView str) {
-        const char *s = str.data();
-
-        if (nullptr == s) {
-            s = "nullptr";
-        }
-
-        while (*s != '\0') {
-            write(*s);
-            s += 1;
-        }
+    void valueImpl(f64 real) {
+        writeReal(real, config.double_places);
     }
 
-    /// @brief Print integer to buffer
-    /// @param integer Integer value to print
-    /// @return Number of characters written
-    void print(i32 integer) {
-        if (integer == 0) {
-            write('0');
-            return;
-        }
+    // Decoration rendering
 
-        if (integer < 0) {
-            integer = -integer;
-            write('-');
-        }
+    void arrowImpl() { writeString("-> "); }
 
-        char digits_buffer[12];
+    void colonImpl() { writeString(": "); }
 
-        auto digits_total{0};
-        while (integer > 0) {
-            const auto base = 10;
+    void beginContrastImpl() { writeChar('\x81'); }
 
-            digits_buffer[digits_total] = static_cast<char>(integer % base + '0');
-            digits_total += 1;
-            integer /= base;
-        }
+    void endContrastImpl() { writeChar('\x80'); }
 
-        for (auto i = digits_total - 1; i >= 0; i -= 1) {
-            write(digits_buffer[i]);
-        }
-    }
+    void beginBlockImpl() { writeChar('['); }
 
-    /// @brief Print floating-point number to buffer
-    /// @param real Floating-point value to print
-    /// @param rounding Number of decimal places to show
-    /// @return Number of characters written
-    void print(f64 real, u8 rounding) {
-        if (isnan(real)) {
-            print("nan");
-            return;
-        }
+    void endBlockImpl() { writeChar(']'); }
 
-        if (isinf(real)) {
-            print("inf");
-            return;
-        }
+    void beginAltBlockImpl() { writeChar('<'); }
 
-        if (real < 0) {
-            real = -real;
-            write('-');
-        }
+    void endAltBlockImpl() { writeChar('>'); }
 
-        print(i32(real));
-
-        if (rounding > 0) {
-            write('.');
-
-            auto fractional = real - i32(real);
-
-            for (auto i = 0; i < rounding; i += 1) {
-                const auto base = 10;
-
-                fractional *= base;
-                const auto digit = u8(fractional);
-                write('0' + digit);
-                fractional -= digit;
-            }
-        }
-    }
-
-    /// @brief Write single character to buffer
-    /// @param c Character to write
-    /// @return 1 if character written, 0 otherwise
-    /// @note Handles line wrapping, row limits, and contrast mode
-    void write(char c) {
-        if (buffer.full()) {
-            return;
-        }
-
-        if (cursor_row >= config.rows_total) {
-            return;
-        }
-
-        if ('\n' == c) {
-            cursor_row += 1;
-            cursor_col = 0;
-        } else {
-            if (cursor_col >= config.row_max_length) {
-                if (contrast_mode and not buffer.full()) {
-                    (void) buffer.push('\x80');
-                    contrast_mode = false;
-                }
-                return;
-            }
-            cursor_col += 1;
-        }
-        (void) buffer.push(c);
-    }
+    void beginWidgetImpl(usize) {} // No-op for text renderer
+    void endWidgetImpl() { writeChar('\n'); }
 };
 
-}// namespace ui
-}// namespace kf
+} // namespace ui
+} // namespace kf
