@@ -120,6 +120,12 @@ public:
     /// @brief Get canvas height in glyphs
     kf_nodiscard u8 heightInGlyphs() const noexcept { return frame.height / current_font->heightTotal(); }
 
+    /// @brief Get current font glyph width
+    kf_nodiscard Pixel glyphWidth() const noexcept { return current_font->widthTotal(); }
+
+    /// @brief Get current font glyph height
+    kf_nodiscard Pixel glyphHeight() const noexcept { return current_font->heightTotal(); }
+
     // Control
 
     /// @brief Set current font for text rendering
