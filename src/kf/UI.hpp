@@ -138,8 +138,8 @@ template<typename R> struct UI final : Singleton<UI<R>> {
             render.title(title);
 
             const auto available = render.widgetsAvailable();
-            const auto start = (totalWidgets() > available) ? min(cursor, totalWidgets() - available) : 0;
-            const auto end = min(start + available, totalWidgets());
+            const auto start = (totalWidgets() > available) ? kf::min(cursor, totalWidgets() - available) : 0;
+            const auto end = kf::min(start + available, totalWidgets());
 
             for (auto i = start; i < end; i += 1) {
                 render.beginWidget(i);
@@ -202,9 +202,7 @@ private:
 public:
     /// @brief Access renderer configuration settings
     /// @return Reference to renderer settings structure
-    typename RenderImpl::Config &renderConfig() {
-        return render_system.config;
-    }
+    typename RenderImpl::Config &renderConfig() { return render_system.config; }
 
     /// @brief Set active page for display
     /// @param page Page to make active (must remain valid)
@@ -272,21 +270,16 @@ public:
 
     private:
         StringView label;    ///< Button label text
-        ClickHandler on_click;///< Click event handler
 
     public:
+        ClickHandler on_click{nullptr};///< Click event handler
+
         /// @brief Construct button with label and click handler
         /// @param root Page to add button to
         /// @param label Button display text
         /// @param on_click Function called when button is clicked
-        explicit Button(
-            Page &root,
-            StringView label,
-            ClickHandler on_click
-        ) :
-            Widget{root},
-            label{label},
-            on_click{kf::move(on_click)} {}
+        explicit Button(Page &root, StringView label) :
+            Widget{root}, label{label} {}
 
         /// @brief Handle button click event
         /// @return false (button click typically doesn't require redraw)
@@ -316,21 +309,15 @@ public:
         /// @brief Construct checkbox with change handler (not attached to page)
         /// @param change_handler Function called when checkbox state changes
         /// @param default_state Initial checkbox state
-        explicit CheckBox(
-            bool default_state = false
-        ) :
+        explicit CheckBox(bool default_state = false) :
             state{default_state} {}
 
         /// @brief Construct checkbox with change handler and add to page
         /// @param root Page to add checkbox to
         /// @param change_handler Function called when checkbox state changes
         /// @param default_state Initial checkbox state
-        explicit CheckBox(
-            Page &root,
-            bool default_state = false
-        ) :
-            Widget{root},
-            state{default_state} {}
+        explicit CheckBox(Page &root, bool default_state = false) :
+            Widget{root}, state{default_state} {}
 
         /// @brief Toggle state on click
         /// @return true (redraw required after state change)
@@ -385,20 +372,14 @@ public:
     public:
         /// @brief Construct combo box (not attached to page)
         /// @param items Array of option items
-        explicit ComboBox(
-            Container items
-        ) :
+        explicit ComboBox(Container items) :
             items{items} {}
 
         /// @brief Construct combo box and add to page
         /// @param root Page to add combo box to
         /// @param items Array of option items
-        explicit ComboBox(
-            Page &root,
-            Container items
-        ) :
-            Widget{root},
-            items{items} {}
+        explicit ComboBox(Page &root, Container items) :
+            Widget{root}, items{items} {}
 
         /// @brief Change selection based on direction
         /// @param direction Navigation direction (positive/negative)
@@ -437,18 +418,12 @@ public:
         /// @brief Construct display widget and add to page
         /// @param root Page to add display to
         /// @param val Value to display (read-only reference)
-        explicit Display(
-            Page &root,
-            const T &val
-        ) :
-            Widget{root},
-            value{val} {}
+        explicit Display(Page &root, const T &val) :
+            Widget{root}, value{val} {}
 
         /// @brief Construct display widget (not attached to page)
         /// @param val Value to display (read-only reference)
-        explicit Display(
-            const T &val
-        ) :
+        explicit Display(const T &val) :
             value{val} {}
 
         /// @brief Render value with appropriate formatting
@@ -475,14 +450,8 @@ public:
         /// @param root Page to add labeled widget to
         /// @param label Text label for widget
         /// @param impl Widget to wrap with label
-        explicit Labeled(
-            Page &root,
-            StringView label,
-            W impl
-        ) :
-            Widget{root},
-            label{label},
-            impl{move(impl)} {}
+        explicit Labeled(Page &root, StringView label, W impl) :
+            Widget{root}, label{label}, impl{kf::move(impl)} {}
 
         /// @brief Forward click event to wrapped widget
         /// @return Result from wrapped widget's onClick()
@@ -530,9 +499,7 @@ public:
             T step = static_cast<T>(1),
             Mode mode = Mode::Arithmetic
         ) :
-            value{default_value},
-            step{step},
-            mode{mode} {}
+            value{default_value}, step{step}, mode{mode} {}
 
         /// @brief Construct spin box and add to page
         /// @param root Page to add spin box to
@@ -542,10 +509,7 @@ public:
             T step = static_cast<T>(1),
             Mode mode = Mode::Arithmetic
         ) :
-            Widget{root},
-            value{default_value},
-            step{step},
-            mode{mode} {}
+            Widget{root}, value{default_value}, step{step}, mode{mode} {}
 
         /// @brief Toggle between value adjustment and step adjustment modes
         /// @return true (redraw required after mode change)
