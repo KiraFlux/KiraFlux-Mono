@@ -253,6 +253,20 @@ public:
         }
     }
 
+    // Helpful components
+
+    template<typename T> struct HasChangeHandler {
+        Function<void(T)> change_handler{nullptr};
+
+    protected:
+
+        void invokeHandler(T value) const {
+            if (nullptr != change_handler) {
+                change_handler(value);
+            }
+        }
+    };
+
     // Built-in widget implementations
 
     /// @brief Button widget for triggering actions on click
@@ -297,11 +311,8 @@ public:
     };
 
     /// @brief Checkbox widget for boolean input
-    struct CheckBox final : Widget {
-        using ChangeHandler = Function<void(bool)>;///< Checkbox state change handler
-
+    struct CheckBox final : Widget, HasChangeHandler<bool> {
     private:
-        ChangeHandler on_change;///< State change callback
         bool state;             ///< Current checkbox state
 
     public:
@@ -309,10 +320,8 @@ public:
         /// @param change_handler Function called when checkbox state changes
         /// @param default_state Initial checkbox state
         explicit CheckBox(
-            ChangeHandler change_handler,
             bool default_state = false
         ) :
-            on_change{kf::move(change_handler)},
             state{default_state} {}
 
         /// @brief Construct checkbox with change handler and add to page
@@ -321,11 +330,9 @@ public:
         /// @param default_state Initial checkbox state
         explicit CheckBox(
             Page &root,
-            ChangeHandler change_handler,
             bool default_state = false
         ) :
             Widget{root},
-            on_change{kf::move(change_handler)},
             state{default_state} {}
 
         /// @brief Toggle state on click
@@ -354,22 +361,17 @@ public:
         /// @param new_state New checkbox state
         void setState(bool new_state) {
             state = new_state;
-
-            if (nullptr != on_change) {
-                on_change(state);
-            }
+            HasChangeHandler<bool>::invokeHandler(state);
         }
     };
 
     /// @brief Combo box for selecting from predefined options
     /// @tparam T Value type for options
     /// @tparam N Number of options (must be >= 1)
-    template<typename T, usize N> struct ComboBox final : Widget {
+    template<typename T, usize N> struct ComboBox final : Widget, HasChangeHandler<T> {
         static_assert(N >= 1, "N >= 1");
 
         using Value = T;///< ComboBox value type
-
-        using ChangeHandler = Function<void(T)>;
 
         /// @brief Combo box option item
         struct Item {
@@ -380,7 +382,6 @@ public:
         using Container = Array<Item, N>;///< Container type for options
 
     private:
-        ChangeHandler on_change;
         const Container items;///< Available options
         int cursor{0};        ///< Current selection index
 
@@ -388,32 +389,26 @@ public:
         /// @brief Construct combo box (not attached to page)
         /// @param items Array of option items
         explicit ComboBox(
-            Container items,
-            ChangeHandler on_change
+            Container items
         ) :
-            items{(items)},
-            on_change{(on_change)} {}
+            items{items} {}
 
         /// @brief Construct combo box and add to page
         /// @param root Page to add combo box to
         /// @param items Array of option items
         explicit ComboBox(
             Page &root,
-            Container items,
-            ChangeHandler on_change
+            Container items
         ) :
             Widget{root},
-            items{(items)},
-            on_change{(on_change)} {}
+            items{items} {}
 
         /// @brief Change selection based on direction
         /// @param direction Navigation direction (positive/negative)
         /// @return true (redraw required after selection change)
         bool onValue(Event::Value direction) override {
             moveCursor(direction);
-            if (nullptr != on_change) {
-                on_change(items[cursor].value);
-            }
+            HasChangeHandler<T>::invokeHandler(items[cursor].value);
             return true;
         }
 
@@ -475,9 +470,10 @@ public:
 
     private:
         StringView label;///< Label text
-        W impl;           ///< Wrapped widget instance
 
     public:
+        W impl;           ///< Wrapped widget instance
+
         /// @brief Construct labeled widget and add to page
         /// @param root Page to add labeled widget to
         /// @param label Text label for widget
@@ -511,7 +507,7 @@ public:
 
     /// @brief Spin box for adjusting numeric values with different modes
     /// @tparam T Numeric type for spin box value (must be arithmetic)
-    template<typename T> struct SpinBox final : Widget {
+    template<typename T> struct SpinBox final : Widget, HasChangeHandler<T> {
         static_assert(kf::is_arithmetic<T>::value, "T must be arithmetic");
 
         using Value = T;///< Numeric value type
@@ -524,45 +520,40 @@ public:
         };
 
     private:
-        bool is_step_setting_mode{false};///< true when adjusting step size, false when adjusting value
-        const Mode mode;                 ///< Current adjustment mode
-        T &value;                        ///< Reference to value being controlled
+
+        T value;                        ///< Reference to value being controlled
         T step;                          ///< Current step size
+        const Mode mode;                 ///< Current adjustment mode
+        bool is_step_setting_mode{false};///< true when adjusting step size, false when adjusting value
 
     public:
         /// @brief Construct spin box (not attached to page)
-        /// @param value Reference to variable to control
-        /// @param step Initial step size
-        /// @param mode Adjustment mode (default: Arithmetic)
         explicit SpinBox(
-            T &value,
+            T default_value = T{},
             T step = static_cast<T>(1),
             Mode mode = Mode::Arithmetic
         ) :
-            mode{mode},
-            value{value},
-            step{step} {}
+            value{default_value},
+            step{step},
+            mode{mode} {}
 
         /// @brief Construct spin box and add to page
         /// @param root Page to add spin box to
-        /// @param value Reference to variable to control
-        /// @param step Initial step size
-        /// @param mode Adjustment mode (default: Arithmetic)
         explicit SpinBox(
             Page &root,
-            T &value,
+            T default_value = T{},
             T step = static_cast<T>(1),
             Mode mode = Mode::Arithmetic
         ) :
             Widget{root},
-            mode{mode},
-            value{value},
-            step{step} {}
+            value{default_value},
+            step{step},
+            mode{mode} {}
 
         /// @brief Toggle between value adjustment and step adjustment modes
         /// @return true (redraw required after mode change)
         bool onClick() override {
-            is_step_setting_mode = !is_step_setting_mode;
+            is_step_setting_mode = not is_step_setting_mode;
             return true;
         }
 
@@ -611,6 +602,7 @@ public:
                     value = 0;
                 }
             }
+            HasChangeHandler<T>::invokeHandler(value);
         }
 
         /// @brief Adjust step size with multiplier protection
