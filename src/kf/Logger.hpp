@@ -6,8 +6,9 @@
 #include <Arduino.h>
 
 #include "kf/core/aliases.hpp"
-#include "kf/memory/Slice.hpp"
+#include "kf/memory/StringView.hpp"
 #include "kf/pattern/Singleton.hpp"
+
 
 namespace kf {
 
@@ -16,7 +17,7 @@ namespace kf {
 struct Logger final : Singleton<Logger> {
     friend struct Singleton<Logger>;
 
-    using WriteHandler = void (*)(Slice<const char>);///< Output handler function type
+    using WriteHandler = void (*)(StringView);///< Output handler function type
 
     WriteHandler writer{nullptr};///< Current output handler (nullptr disables logging)
 
