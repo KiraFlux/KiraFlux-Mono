@@ -153,9 +153,6 @@ template<typename R> struct UI final : Singleton<UI<R>> {
         /// @return true if redraw required after event processing
         bool onEvent(Event event) {
             switch (event.type()) {
-                case Event::Type::None: {
-                    return false;
-                }
                 case Event::Type::Update: {
                     return true;
                 }
