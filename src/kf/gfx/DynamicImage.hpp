@@ -33,7 +33,7 @@ public:
     };
 
 private:
-    using Traits = PixelTraits<Format>;
+    using Traits = pixel_traits<Format>;
 
 public:
     using BufferType = typename Traits::BufferType;///< Raw buffer element type

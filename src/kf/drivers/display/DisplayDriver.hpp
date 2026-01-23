@@ -20,14 +20,14 @@ template<typename Impl, PixelFormat F, usize W, usize H> struct DisplayDriver {
 
 protected:
     using Base = DisplayDriver;
-    using Traits = PixelTraits<F>;
+    using traits = pixel_traits<F>;
 
 public:
     /// @brief Type used for buffer storage
-    using BufferType = typename Traits::BufferType;
+    using BufferType = typename traits::BufferType;
 
     /// @brief Type used for color representation
-    using ColorType = typename Traits::ColorType;
+    using ColorType = typename traits::ColorType;
 
     /// @brief Pixel format
     static constexpr auto pixel_format{F};
@@ -46,7 +46,7 @@ protected:
     static constexpr auto max_phys_y{phys_height - 1};
 
     /// @brief Required buffer size for the display
-    static constexpr auto buffer_items{Traits::template buffer_size<W, H>};
+    static constexpr auto buffer_items{traits::template buffer_size<W, H>};
 
     /// @brief Software frame buffer for display operations
     BufferType software_screen_buffer[buffer_items]{};

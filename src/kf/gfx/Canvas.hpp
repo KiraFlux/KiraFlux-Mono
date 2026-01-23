@@ -18,17 +18,21 @@
 namespace kf::gfx {
 
 /// @brief Drawing context with graphics primitives and text rendering
-/// @tparam Format Pixel format for canvas operations
-template<PixelFormat Format> struct Canvas {
+/// @tparam F Pixel format for canvas operations
+template<PixelFormat F> struct Canvas {
 
 private:
-    using Traits = PixelTraits<Format>;
+    using traits = pixel_traits<F>;
+    using Palette = ColorPalette<F>;
 
 public:
-    using ColorType = typename Traits::ColorType;///< Color representation type
+    using ColorType = typename traits::ColorType;///< Color representation type
 
 private:
-    DynamicImage<Format> frame;///< Target drawing surface
+    static constexpr ColorType default_foreground_color{Palette::getAnsiColor(Palette::Ansi::WhiteBright)};
+    static constexpr ColorType default_background_color{Palette::getAnsiColor(Palette::Ansi::Black)};
+
+    DynamicImage<F> frame;     ///< Target drawing surface
     const Font *current_font;  ///< Currently selected font
     ColorType foreground_color;///< Drawing color
     ColorType background_color;///< Background/fill color
@@ -41,10 +45,10 @@ public:
     /// @param foreground Initial drawing color
     /// @param background Initial background color
     explicit Canvas(
-        const DynamicImage<Format> &frame,
+        const DynamicImage<F> &frame,
         const Font &font = Font::blank(),
-        ColorType foreground = Traits::foreground_default,
-        ColorType background = Traits::background_default
+        ColorType foreground = default_foreground_color,
+        ColorType background = default_background_color
     ) noexcept:
         frame{frame},
         current_font{&font},
@@ -56,8 +60,8 @@ public:
     explicit Canvas() noexcept:
         frame{},
         current_font{&Font::blank()},
-        foreground_color{Traits::foreground_default},
-        background_color{Traits::background_default},
+        foreground_color{default_foreground_color},
+        background_color{default_background_color},
         auto_next_line{false} {}
 
     /// @brief Creates validated sub-canvas within current bounds
@@ -66,7 +70,7 @@ public:
     /// @param offset_x X offset within current canvas
     /// @param offset_y Y offset within current canvas
     /// @return Sub-canvas or error if out of bounds
-    Result<Canvas, typename DynamicImage<Format>::Error> sub(
+    Result<Canvas, typename DynamicImage<F>::Error> sub(
         Pixel width, Pixel height,
         Pixel offset_x, Pixel offset_y
     ) {
@@ -200,8 +204,8 @@ public:
     /// @param x Left position
     /// @param y Top position
     /// @param image Image to draw
-    template<Pixel W, Pixel H> void image(Pixel x, Pixel y, const StaticImage<Format, W, H> &image) noexcept {
-        Traits::copy(
+    template<Pixel W, Pixel H> void image(Pixel x, Pixel y, const StaticImage<F, W, H> &image) noexcept {
+        traits::copy(
             image.buffer, image.width(), image.height(),
             frame.buffer, frame.stride, frame.width, frame.height,
             x, y);
@@ -289,7 +293,7 @@ public:
                 const auto width = static_cast<int>(std::sqrt(r_squared - y_squared));
 
                 // todo lineH
-                for (auto x = -width; x <= width; ++x) {
+                for (auto x = -width; x <= width; x += 1) {
                     frame.setPixel(static_cast<Pixel>(cx + x), static_cast<Pixel>(cy + y), foreground_color);
                 }
             }
@@ -308,12 +312,12 @@ public:
                     drawCirclePoints(cx, cy, y, x, foreground_color);
                 }
 
-                y++;
+                y += 1;
                 err += 2 * y - 1;
 
                 // Update x if needed
                 if (err > 0) {
-                    x--;
+                    x -= 1;
                     err -= 2 * x + 1;
                 }
             }
@@ -328,8 +332,8 @@ public:
     ///   \x80 - Normal color mode (text - fg, bg)
     ///   \x81 - Invert color mode (bg, text - fg)
     ///   \x82 - Set cursor at center x
-    ///   \x83 - Set custom foreground color (followed by color bytes)
-    ///   \x84 - Set custom background color (followed by color bytes)
+    ///   \x83 - Set custom foreground color (ANSI color index)
+    ///   \x84 - Set custom background color (ANSI color index)
     ///   \n - New line
     ///   \t - Tab (4 character widths)
     void text(Pixel start_x, Pixel start_y, const char *text) noexcept {
@@ -360,38 +364,43 @@ public:
                     cursor_x = new_x;
                     continue;
                 }
-
-                case '\x83': {
-                    // Read color from following bytes
-                    ++text;
-                    if (*text == '\0') { return; }
-
-                    ColorType new_color = 0;
-                    u8 *color_bytes = reinterpret_cast<u8 *>(&new_color);
-                    for (usize i = 0; i < sizeof(ColorType); ++i) {
-                        if (*text == '\0') { break; }
-                        color_bytes[i] = static_cast<u8>(*text);
-                        ++text;
-                    }
-                    --text;// Return to last read character
-                    current_foreground_color = new_color;
+                case '\xF0':
+                case '\xF1':
+                case '\xF2':
+                case '\xF3':
+                case '\xF4':
+                case '\xF5':
+                case '\xF6':
+                case '\xF7':
+                case '\xF8':
+                case '\xF9':
+                case '\xFA':
+                case '\xFB':
+                case '\xFC':
+                case '\xFD':
+                case '\xFE':
+                case '\xFF': {
+                    current_foreground_color = Palette::getAnsiColor(static_cast<typename Palette::Ansi>(*text));
                     continue;
                 }
 
-                case '\x84': {
-                    // Read color from following bytes
-                    ++text;
-                    if (*text == '\0') { return; }
-
-                    ColorType new_color = 0;
-                    u8 *color_bytes = reinterpret_cast<u8 *>(&new_color);
-                    for (usize i = 0; i < sizeof(ColorType); ++i) {
-                        if (*text == '\0') { break; }
-                        color_bytes[i] = static_cast<u8>(*text);
-                        ++text;
-                    }
-                    --text;// Return to last read character
-                    current_background_color = new_color;
+                case '\xB0':
+                case '\xB1':
+                case '\xB2':
+                case '\xB3':
+                case '\xB4':
+                case '\xB5':
+                case '\xB6':
+                case '\xB7':
+                case '\xB8':
+                case '\xB9':
+                case '\xBA':
+                case '\xBB':
+                case '\xBC':
+                case '\xBD':
+                case '\xBE':
+                case '\xBF': {
+                    current_background_color = Palette::getAnsiColor(static_cast<typename Palette::Ansi>(*text));
                     continue;
                 }
 

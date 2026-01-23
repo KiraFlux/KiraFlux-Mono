@@ -18,7 +18,7 @@ namespace kf::gfx {
 /// Useful for storing icons, logos, and other predefined graphics.
 template<PixelFormat Format, Pixel W, Pixel H> struct StaticImage final {
 private:
-    using Traits = PixelTraits<Format>;
+    using Traits = pixel_traits<Format>;
 
 public:
     /// @brief Get the image width
