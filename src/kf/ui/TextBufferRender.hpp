@@ -32,6 +32,7 @@ template<usize N> struct TextBufferRender : Render<TextBufferRender<N>> {
         Glyph rows_total{4};            ///< Total available rows in display
         Glyph float_places{2};          ///< Decimal places for float
         Glyph double_places{4};         ///< Decimal places for double
+        bool title_centered{true};      ///< Render Title centered
 
         Config(const Config &) = delete;
     };
@@ -148,6 +149,12 @@ private:
     }
 
     void titleImpl(StringView title) {
+        if (config.title_centered) {
+            const auto spaces = kf::max(0u, (config.row_max_length - title.size()) / 2);
+            for (int i = 0; i < spaces; i += 1) {
+                writeChar(' ');
+            }
+        }
         writeString(title);
         writeChar('\n');
     }
