@@ -63,7 +63,7 @@ private:
 
     u8 logical_width{phys_width};        ///< Current logical width (after orientation)
     u8 logical_height{phys_height};      ///< Current logical height (after orientation)
-    u8 madctl_base_mode{MadCtl::BgrMode};///< Base MADCTL value (BGR color order)
+    u8 madctl_base_mode{MadCtl::RgbMode};///< Base MADCTL value
 
 public:
     /// @brief Construct ST7735 driver instance
