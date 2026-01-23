@@ -16,10 +16,10 @@ namespace kf {
 struct JoystickListener {
     /// @brief Joystick direction event types
     enum class Direction : u8 {
-        Up = 1,   ///< Joystick moved upward
-        Down = 2, ///< Joystick moved downward
-        Left = 3, ///< Joystick moved left
-        Right = 4,///< Joystick moved right
+        Up = 0,   ///< Joystick moved upward
+        Down = 1, ///< Joystick moved downward
+        Left = 2, ///< Joystick moved left
+        Right = 3,///< Joystick moved right
         Home,     ///< Joystick returned to center position
     };
 
