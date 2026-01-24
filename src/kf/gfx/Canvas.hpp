@@ -10,6 +10,7 @@
 #include "kf/core/pixel_traits.hpp"
 #include "kf/memory/Array.hpp"
 
+#include "kf/gfx/ColorPalette.hpp"
 #include "kf/gfx/DynamicImage.hpp"
 #include "kf/gfx/Font.hpp"
 #include "kf/gfx/StaticImage.hpp"
