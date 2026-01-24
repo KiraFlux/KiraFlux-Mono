@@ -23,13 +23,15 @@ namespace kf {
 /// @tparam R Renderer implementation type (must inherit from kf::ui::Render)
 /// @note Singleton pattern ensures single UI instance with event queue and page management
 template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
-    friend Singleton<UI<R, E>>;
+    friend struct Singleton<UI<R, E>>;
 
-    using RenderImpl = R;   ///< Renderer implementation type
-    using Event = E;///< UI event type
-    using EventValue = typename Event::Value;
+    using RenderImpl = R;                           ///< Renderer implementation type
+    using RenderConfig = typename Render::Config;   ///< Renderer Configuration type
 
-    struct Page;
+    using Event = E;                                ///< UI Event type
+    using EventValue = typename Event::Value;       ///< UI Event Value type
+
+    struct Page; // forward declaration for Widget
 
     /// @brief Base widget class for all UI components
     /// @note All interactive UI elements inherit from this class
@@ -99,10 +101,10 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
             }
         };
 
-        ArrayList<Widget *> widgets{};///< List of widgets on this page
-        StringView title;            ///< Page title displayed in header
-        usize cursor{0};              ///< Current widget cursor position (focused widget index)
-        PageSetter to_this{*this};    ///< Navigation widget to this page
+        ArrayList<Widget *> widgets{};  ///< List of widgets on this page
+        StringView title;               ///< Page title displayed in header
+        usize cursor{0};                ///< Current widget cursor position (focused widget index)
+        PageSetter to_this{*this};      ///< Navigation widget to this page
 
     public:
         /// @brief Construct page with title
@@ -207,7 +209,7 @@ private:
 public:
     /// @brief Access renderer configuration settings
     /// @return Reference to renderer settings structure
-    typename RenderImpl::Config &renderConfig() { return render_system.config; }
+    RenderConfig &renderConfig() { return render_system.config; }
 
     /// @brief Set active page for display
     /// @param page Page to make active (must remain valid)
@@ -259,7 +261,6 @@ public:
         Function<void(T)> change_handler{nullptr};
 
     protected:
-
         void invokeHandler(T value) const {
             if (nullptr != change_handler) {
                 change_handler(value);
@@ -365,7 +366,7 @@ public:
         /// @brief Combo box option item
         struct Item {
             StringView key;///< Display name for option
-            T value;        ///< Value associated with option
+            T value;       ///< Value associated with option
         };
 
         using Container = Array<Item, N>;///< Container type for options
@@ -492,7 +493,7 @@ public:
 
     private:
 
-        T value;                        ///< Reference to value being controlled
+        T value;                         ///< Reference to value being controlled
         T step;                          ///< Current step size
         const Mode mode;                 ///< Current adjustment mode
         bool is_step_setting_mode{false};///< true when adjusting step size, false when adjusting value
