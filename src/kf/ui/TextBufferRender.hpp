@@ -81,7 +81,7 @@ private:
             case '\n':cursor.newline();
                 break;
 
-            case '\x82': // Start contrast
+            case '\x81': // Start contrast
                 cursor.contrast = true;
                 break;
 
@@ -143,7 +143,7 @@ private:
 
     void titleImpl(StringView title) {
         writeChar('\xF0');
-        writeChar('\xBA');
+        writeChar('\xBC');
         if (config.title_centered) {
             const auto spaces = kf::max(0, (int(config.row_max_length) - int(title.size())) / 2);
             for (int i = 0; i < spaces; i += 1) {
@@ -156,8 +156,8 @@ private:
     }
 
     void checkboxImpl(bool enabled) {
-        constexpr StringView on{"==\xB2[ 1 ]\x80"};
-        constexpr StringView off{"\xB1[ 0 ]\x80--"};
+        constexpr StringView on{"==\xB2( 1 )\x80"};
+        constexpr StringView off{"\xB1( 0 )\x80--"};
         writeString(enabled ? on : off);
     }
 
@@ -186,32 +186,28 @@ private:
 
     // Decoration rendering
 
-    void arrowImpl() { writeString("\xF6-> "); }
+    void arrowImpl() { writeString("-> "); }
 
-    void colonImpl() { writeString("\xF6: \x80"); }
+    void colonImpl() { writeString(": "); }
 
     void beginFocusedImpl() { writeChar('\x81'); }
 
     void endFocusedImpl() { writeChar('\x80'); }
 
     void beginBlockImpl() {
-        writeChar('\xF5');
         writeChar('[');
     }
 
     void endBlockImpl() {
         writeChar(']');
-        writeChar('\x80');
     }
 
     void beginAltBlockImpl() {
-        writeChar('\xF5');
         writeChar('<');
     }
 
     void endAltBlockImpl() {
         writeChar('>');
-        writeChar('\x80');
     }
 
     void beginWidgetImpl(usize) {} // No-op for text renderer
