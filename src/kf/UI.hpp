@@ -5,7 +5,7 @@
 
 #include "kf/Function.hpp"
 #include "kf/algorithm.hpp"
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/core/type_traits.hpp"
 #include "kf/core/utility.hpp"

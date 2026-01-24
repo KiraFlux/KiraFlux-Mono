@@ -10,7 +10,7 @@
 
 #include "kf/Function.hpp"
 #include "kf/Result.hpp"
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/core/utility.hpp"
 #include "kf/memory/Array.hpp"

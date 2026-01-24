@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/pixel_traits.hpp"
 #include "kf/drivers/display/DisplayDriver.hpp"
 

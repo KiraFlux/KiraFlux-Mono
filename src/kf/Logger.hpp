@@ -5,7 +5,7 @@
 
 #include <Arduino.h>
 
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/memory/StringView.hpp"
 #include "kf/pattern/Singleton.hpp"
 

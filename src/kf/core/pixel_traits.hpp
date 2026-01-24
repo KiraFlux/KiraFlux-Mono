@@ -4,8 +4,8 @@
 #pragma once
 
 #include "kf/algorithm.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/PixelFormat.hpp"
-#include "kf/core/aliases.hpp"
 #include "kf/math/units.hpp"
 
 

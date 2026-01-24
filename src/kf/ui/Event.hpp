@@ -4,7 +4,7 @@
 #pragma once
 
 #include "kf/algorithm.hpp"
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/core/bit_traits.hpp"
 

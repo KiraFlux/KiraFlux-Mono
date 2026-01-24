@@ -5,7 +5,7 @@
 
 #include <Arduino.h>
 
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/math/filters/LowFrequencyFilter.hpp"
 

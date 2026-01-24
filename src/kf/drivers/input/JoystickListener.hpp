@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/drivers/input/Joystick.hpp"
 #include "kf/math/time/TimeoutManager.hpp"

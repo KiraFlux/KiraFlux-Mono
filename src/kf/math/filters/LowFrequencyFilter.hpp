@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 
 namespace kf {

@@ -6,7 +6,7 @@
 #include <math.h> // NOLINT(*-deprecated-headers) // for AVR capability
 
 #include "kf/Function.hpp"
-#include "kf/core/aliases.hpp"
+#include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
 #include "kf/memory/ArrayString.hpp"
 #include "kf/memory/StringView.hpp"
