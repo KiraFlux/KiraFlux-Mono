@@ -232,20 +232,20 @@ public:
     /// @brief Process active page update, pending events and render if needed
     /// @note Must be called regularly (e.g., in main loop)
     void poll(Milliseconds now) noexcept {
-        if (nullptr == active_page) {
-            return;
-        }
+        if (nullptr == active_page) { return; }
 
         active_page->onUpdate(now);
 
-        if (events.empty()) {
-            return;
-        }
+        if (events.empty()) { return; }
+
+        constexpr usize max_events_per_poll{20};
+        usize events_processed{0};
 
         bool render_required{false};
 
-        while (not events.empty()) {
-            render_required = render_required or active_page->onEvent(events.front());
+        while (not events.empty() and events_processed < max_events_per_poll) {
+            render_required |= active_page->onEvent(events.front());
+            events_processed += 1;
             events.pop();
         }
 
