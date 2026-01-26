@@ -7,46 +7,76 @@
 
 #include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
+#include "kf/math/units.hpp"
 
 
 namespace kf {
 
 /// @brief Minimal button with press detection only
 struct Button {
-    enum class Mode : u8 { PullUp, PullDown };
-    enum class PullType : u8 { External, Internal };
+
+    struct Config {
+        Milliseconds debounce;
+        u8 pin;
+
+        enum class Mode : u8 {
+            PullUp,
+            PullDown
+        } mode;
+
+        enum class PullType : u8 {
+            External,
+            Internal
+        } pull_type;
+
+        explicit Config(
+            gpio_num_t pin,
+            Mode mode,
+            PullType pull_type,
+            Milliseconds debounce = 30
+        ) noexcept:
+            pin{static_cast<u8>(pin)}, mode{mode}, pull_type{pull_type}, debounce{debounce} {}
+
+        kf_nodiscard bool normalize(bool state) const noexcept {
+            return mode == Mode::PullDown == state;
+        }
+
+        kf_nodiscard u8 matchMode() const noexcept {
+            if (pull_type == PullType::External) {
+                return INPUT;
+            }
+            return (mode == Mode::PullUp) ? INPUT_PULLUP : INPUT_PULLDOWN;
+        }
+    };
 
 private:
-    static constexpr Milliseconds debounce_ms = 30;
 
-    u32 last_change{0};
+    const Config &config;
+    Milliseconds next{0};
     bool last_stable{false};
-    bool click_ready{false};
     bool last_raw{false};
-    const u8 pin;
-    const Mode mode;
+    bool click_ready{false};
 
 public:
-    explicit Button(gpio_num_t pin, Mode mode = Mode::PullDown) noexcept:
-        pin{static_cast<u8>(pin)}, mode{mode} {}
+    explicit Button(const Config &config) noexcept:
+        config{config} {}
 
-    void init(PullType pull_type) const noexcept {
-        pinMode(pin, matchMode(pull_type));
+    void init() const noexcept {
+        pinMode(config.pin, config.matchMode());
     }
 
     /// @brief Poll button state - must be called regularly
-    void poll() noexcept {
-        const auto now = millis();
-        const bool raw = readRaw();
+    void poll(Milliseconds now) noexcept {
+        const bool state = config.normalize(digitalRead(config.pin));
 
-        if (raw != last_raw) {
-            last_raw = raw;
-            last_change = now;
+        if (state != last_raw) {
+            last_raw = state;
+            next = now + config.debounce;
         }
 
-        if (now - last_change >= debounce_ms) {
-            if (last_stable != raw) {
-                last_stable = raw;
+        if (now >= next) {
+            if (last_stable != state) {
+                last_stable = state;
 
                 if (last_stable) {
                     click_ready = true;
@@ -69,23 +99,6 @@ public:
     /// @return true if button is currently pressed (after debounce)
     kf_nodiscard bool pressed() const noexcept {
         return last_stable;
-    }
-
-private:
-    kf_nodiscard bool readRaw() const noexcept {
-        const bool raw = digitalRead(pin);
-        if (mode == Mode::PullUp) {
-            return not raw;
-        } else {
-            return raw;
-        }
-    }
-
-    kf_nodiscard u8 matchMode(PullType pull_type) const noexcept {
-        if (pull_type == PullType::External) {
-            return INPUT;
-        }
-        return (mode == Mode::PullUp) ? INPUT_PULLUP : INPUT_PULLDOWN;
     }
 };
 
