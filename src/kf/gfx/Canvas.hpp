@@ -402,7 +402,7 @@ public:
             if (cursor_x > static_cast<Pixel>(width() - font_width)) {
                 clearLineSegment(cursor_x, cursor_y, maxX(), current_background_color);
                 if (auto_next_line) {
-                    cursor_x = 0;
+                    cursor_x = start_x;
                     cursor_y = static_cast<Pixel>(cursor_y + font_total_height);
                 } else {
                     return;
