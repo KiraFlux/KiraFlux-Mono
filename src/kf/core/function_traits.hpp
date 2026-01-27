@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "type_traits.hpp"
-
 namespace kf {
 
 template<typename T> struct function_traits;

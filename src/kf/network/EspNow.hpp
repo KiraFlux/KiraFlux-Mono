@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include <esp_mac.h>
 #include <esp_now.h>
 
@@ -12,7 +14,6 @@
 #include "kf/Result.hpp"
 #include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
-#include "kf/core/utility.hpp"
 #include "kf/memory/Array.hpp"
 #include "kf/memory/Map.hpp"
 #include "kf/memory/Slice.hpp"
@@ -119,9 +120,9 @@ struct EspNow : Singleton<EspNow> {
             auto context = espnow.getPeerContext(mac_);
 
             if (nullptr == context) {
-                espnow.peer_contexts.insert({mac_, Context{kf::move(handler)}});
+                espnow.peer_contexts.insert({mac_, Context{std::move(handler)}});
             } else {
-                context->on_receive = kf::move(handler);
+                context->on_receive = std::move(handler);
             }
 
             return {};
@@ -225,7 +226,7 @@ public:
     /// @brief Set handler for receiving data from unknown peers
     /// @param handler Callback function for unknown peer data
     void setUnknownReceiveHandler(UnknownReceiveHandler &&handler) noexcept {
-        unknown_receive_handler = kf::move(handler);
+        unknown_receive_handler = std::move(handler);
     }
 
 private:
@@ -242,10 +243,10 @@ private:
         const auto peer_context = self.getPeerContext(source_address);
 
         if (nullptr == peer_context) {
-            if (nullptr == self.unknown_receive_handler) { return; }
+            if (not self.unknown_receive_handler) { return; }
             self.unknown_receive_handler(source_address, buffer);
         } else {
-            if (nullptr == peer_context->on_receive) { return; }
+            if (not peer_context->on_receive) { return; }
             peer_context->on_receive(buffer);
         }
     }

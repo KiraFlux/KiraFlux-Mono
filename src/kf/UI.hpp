@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include <utility>
+#include <type_traits>
+
 #include "kf/Function.hpp"
 #include "kf/algorithm.hpp"
 #include "kf/aliases.hpp"
 #include "kf/core/attributes.hpp"
-#include "kf/core/type_traits.hpp"
-#include "kf/core/utility.hpp"
 #include "kf/memory/Array.hpp"
 #include "kf/memory/StringView.hpp"
 #include "kf/memory/ArrayList.hpp"
@@ -263,7 +264,7 @@ public:
 
     protected:
         void invokeHandler(T value) const noexcept {
-            if (nullptr != change_handler) {
+            if (change_handler) {
                 change_handler(value);
             }
         }
@@ -291,7 +292,7 @@ public:
         /// @brief Handle button click event
         /// @return false (button click typically doesn't require redraw)
         bool onClick() noexcept override {
-            if (nullptr != on_click) {
+            if (on_click) {
                 on_click();
             }
 
@@ -443,7 +444,7 @@ public:
     /// @brief Widget wrapper adding label to another widget
     /// @tparam W Type of widget being labeled (must inherit from Widget)
     template<typename W> struct Labeled final : Widget {
-        static_assert(kf::is_base_of<Widget, W>::value, "W must be a Widget Subclass");
+        static_assert(std::is_base_of<Widget, W>::value, "W must be a Widget Subclass");
 
         using Impl = W;///< Type of wrapped widget implementation
 
@@ -458,7 +459,7 @@ public:
         /// @param label Text label for widget
         /// @param impl Widget to wrap with label
         explicit Labeled(Page &root, StringView label, W impl) :
-            Widget{root}, label{label}, impl{kf::move(impl)} {}
+            Widget{root}, label{label}, impl{std::move(impl)} {}
 
         /// @brief Forward click event to wrapped widget
         /// @return Result from wrapped widget's onClick()
@@ -481,7 +482,7 @@ public:
     /// @brief Spin box for adjusting numeric values with different modes
     /// @tparam T Numeric type for spin box value (must be arithmetic)
     template<typename T> struct SpinBox final : Widget, HasChangeHandler<T> {
-        static_assert(kf::is_arithmetic<T>::value, "T must be arithmetic");
+        static_assert(std::is_arithmetic<T>::value, "T must be arithmetic");
 
         using Value = T;///< Numeric value type
 
@@ -583,7 +584,7 @@ public:
             } else {
                 step /= step_multiplier;
 
-                kf_if_constexpr (kf::is_integral<T>::value) {
+                kf_if_constexpr (std::is_integral<T>::value) {
                     if (step < 1) { step = 1; }
                 }
             }

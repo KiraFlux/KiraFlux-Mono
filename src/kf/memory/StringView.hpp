@@ -3,9 +3,10 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "kf/memory/Slice.hpp"
 #include "kf/core/attributes.hpp"
-#include "kf/core/type_traits.hpp"
 #include "kf/algorithm.hpp"
 #include "kf/Option.hpp"
 

@@ -3,9 +3,10 @@
 
 #pragma once
 
+#include <utility>
+
 #include "kf/Function.hpp"
 #include "kf/Result.hpp"
-#include "kf/core/utility.hpp"
 #include "kf/memory/Array.hpp"
 #include "kf/network/mizlang/streams.hpp"
 
