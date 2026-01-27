@@ -43,10 +43,10 @@ private:
         traits::fromRgb(0x80, 0x80, 0x00), // yellow
         traits::fromRgb(0x00, 0x00, 0x80), // blue
         traits::fromRgb(0x80, 0x00, 0x80), // purple
-        traits::fromRgb(0x00, 0x70, 0x80), // cyan
+        traits::fromRgb(0x00, 0x60, 0x60), // cyan
         traits::fromRgb(0x80, 0x80, 0x80), // white
         // intense
-        traits::fromRgb(0x60, 0x60, 0x60), // bright black
+        traits::fromRgb(0x30, 0x30, 0x30), // bright black
         traits::fromRgb(0xFF, 0x20, 0x20), // bright red
         traits::fromRgb(0x20, 0xCF, 0x20), // bright green
         traits::fromRgb(0xFF, 0xFF, 0x00), // bright yellow
