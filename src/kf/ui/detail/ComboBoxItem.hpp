@@ -13,6 +13,7 @@ namespace ui {// NOLINT(*-concat-nested-namespaces)
 /// kf::ui detail
 namespace detail {// NOLINT(*-concat-nested-namespaces)
 
+
 template<typename T> struct ComboBoxItem {
 
 private:
@@ -41,6 +42,7 @@ public:
     template<usize N> constexpr ComboBoxItem(const char (&str)[N]) noexcept: // NOLINT(*-explicit-constructor)
         key_{str} {}
 };
+
 
 }
 }

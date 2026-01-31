@@ -3,9 +3,11 @@
 
 #pragma once
 
+// Std
 #include <utility>
 #include <type_traits>
 
+// Lib
 #include "kf/Function.hpp"
 #include "kf/algorithm.hpp"
 #include "kf/aliases.hpp"
@@ -17,8 +19,14 @@
 #include "kf/pattern/Singleton.hpp"
 #include "kf/math/units.hpp"
 
+// Public UI API
 #include "kf/ui/Event.hpp"
-#include "kf/ui/detail.hpp"
+#include "kf/ui/StepMode.hpp"
+
+// Private UI details
+#include "kf/ui/detail/ComboBoxItem.hpp"
+#include "kf/ui/detail/StepAdjuster.hpp"
+#include "kf/ui/detail/ValueAdjuster.hpp"
 
 
 namespace kf {
@@ -35,6 +43,8 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
     using Event = E;                          ///< UI Event type
     using EventValue = typename Event::Value; ///< UI Event Value type
 
+    using StepMode = ui::StepMode;
+
     struct Page; // forward declaration for Widget
 
     /// @brief Base widget class for all UI components
@@ -50,20 +60,17 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
         explicit Widget() noexcept = default;
 
         /// @brief Render widget content (must be implemented by derived classes)
-        /// @param render Renderer instance to use for drawing
         virtual void doRender(RenderImpl &render) const noexcept = 0;
 
         /// @brief Handle click event
         /// @return true if redraw required, false otherwise
-        virtual bool onClick() noexcept { return false; }
+        kf_nodiscard virtual bool onClick() noexcept { return false; }
 
         /// @brief Handle value event
         /// @return true if redraw required, false otherwise
-        virtual bool onValue(EventValue value) noexcept { return false; }
+        kf_nodiscard virtual bool onValue(EventValue value) noexcept { return false; }
 
         /// @brief External widget rendering with focus handling
-        /// @param render Renderer instance to use for drawing
-        /// @param focused true if widget currently has focus
         void render(RenderImpl &render, bool focused) const noexcept {
             if (focused) {
                 render.beginFocused();
@@ -88,7 +95,7 @@ private:
             target{target} {}
 
         /// @brief Set target page as active on click
-        bool onClick() noexcept override {
+        kf_nodiscard bool onClick() noexcept override {
             UI::instance().bindPage(target);
             return true; // redraw always required after page change
         }
@@ -137,7 +144,6 @@ public:
         }
 
         /// @brief Render page content to display
-        /// @param render Renderer instance to use for drawing
         /// @note Handles cursor positioning and widget focus
         void render(RenderImpl &render) noexcept {
             render.title(title_);
@@ -154,9 +160,8 @@ public:
         }
 
         /// @brief Process incoming UI event
-        /// @param event Event to process
         /// @return true if redraw required after event processing
-        bool onEvent(Event event) noexcept {
+        kf_nodiscard bool onEvent(Event event) noexcept {
             switch (event.type()) {
                 case Event::Type::Update: {
                     return true;
@@ -207,7 +212,7 @@ private:
 public:
     /// @brief Access renderer configuration settings
     /// @return Reference to renderer settings structure
-    RenderConfig &renderConfig() noexcept { return render_system.config; }
+    kf_nodiscard RenderConfig &renderConfig() noexcept { return render_system.config; }
 
     /// @brief Set active page for display
     /// @param page Page to make active (must remain valid)
@@ -221,7 +226,6 @@ public:
     }
 
     /// @brief Add event to processing queue
-    /// @param event Event to queue for processing
     void addEvent(Event event) {
         events.push(event);
     }
@@ -278,25 +282,19 @@ public:
     public:
         ClickHandler on_click{nullptr};///< Click event handler
 
-        /// @brief Construct button with label and click handler
-        /// @param root Page to add button to
-        /// @param label Button display text
-        /// @param on_click Function called when button is clicked
         explicit Button(Page &root, StringView label) :
             Widget{root}, label{label} {}
 
         /// @brief Handle button click event
-        /// @return false (button click typically doesn't require redraw)
-        bool onClick() noexcept override {
+        kf_nodiscard bool onClick() noexcept override {
             if (on_click) {
                 on_click();
             }
 
-            return false;
+            return false; // button click typically doesn't require redraw
         }
 
         /// @brief Render button with block styling
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.beginBlock();
             render.value(label);
@@ -307,49 +305,37 @@ public:
     /// @brief Checkbox widget for boolean input
     struct CheckBox final : Widget, HasChangeHandler<bool> {
     private:
-        bool state;             ///< Current checkbox state
+        bool state_;
 
     public:
-        /// @brief Construct checkbox with change handler (not attached to page)
-        /// @param change_handler Function called when checkbox state changes
-        /// @param default_state Initial checkbox state
         explicit CheckBox(bool default_state = false) noexcept:
-            state{default_state} {}
+            state_{default_state} {}
 
-        /// @brief Construct checkbox with change handler and add to page
-        /// @param root Page to add checkbox to
-        /// @param change_handler Function called when checkbox state changes
-        /// @param default_state Initial checkbox state
         explicit CheckBox(Page &root, bool default_state = false) :
-            Widget{root}, state{default_state} {}
+            Widget{root}, state_{default_state} {}
 
-        /// @brief Toggle state on click
-        /// @return true (redraw required after state change)
-        bool onClick() noexcept override {
-            setState(not state);
+        void setState(bool state) noexcept {
+            state_ = state;
+            HasChangeHandler<bool>::invokeHandler(state_);
+        }
+
+        kf_nodiscard bool state() const noexcept {
+            return state_;
+        }
+
+        kf_nodiscard bool onClick() noexcept override {
+            setState(not state_);
             return true;
         }
 
-        /// @brief Set state based on direction
-        /// @param value Positive sets true, negative sets false
-        /// @return true (redraw required after state change)
-        bool onValue(EventValue value) noexcept override {
+        kf_nodiscard bool onValue(EventValue value) noexcept override {
             setState(value > 0);
             return true;
         }
 
         /// @brief Render checkbox with visual state indicator
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
-            render.checkbox(state);
-        }
-
-    private:
-        /// @brief update checkbox state and notify handler
-        /// @param new_state New checkbox state
-        void setState(bool new_state) noexcept {
-            state = new_state;
-            HasChangeHandler<bool>::invokeHandler(state);
+            render.checkbox(state_);
         }
     };
 
@@ -365,31 +351,24 @@ public:
 
     private:
         const ItemContainer items;///< Available options
-        usize cursor{0};            ///< Current selection index
+        usize cursor{0};          ///< Current selection index
 
     public:
-        /// @brief Construct combo box (not attached to page)
-        /// @param items Array of option items
         explicit ComboBox(ItemContainer items) noexcept:
             items{items} {}
 
-        /// @brief Construct combo box and add to page
-        /// @param root Page to add combo box to
-        /// @param items Array of option items
         explicit ComboBox(Page &root, ItemContainer items) :
             Widget{root}, items{items} {}
 
         /// @brief Change selection based on direction
         /// @param value Navigation direction (positive/negative)
-        /// @return true (redraw required after selection change)
-        bool onValue(EventValue value) noexcept override {
+        kf_nodiscard bool onValue(EventValue value) noexcept override {
             moveCursor(value);
             HasChangeHandler<T>::invokeHandler(items[cursor].value());
-            return true;
+            return true; // redraw required after selection change
         }
 
         /// @brief Render current selection
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.beginAltBlock();
             render.value(items[cursor].key());
@@ -398,7 +377,6 @@ public:
 
     private:
         /// @brief Move selection cursor with circular wrapping
-        /// @param delta Cursor movement delta
         void moveCursor(isize delta) noexcept {
             cursor = (cursor + delta + N) % N;
         }
@@ -411,19 +389,13 @@ public:
         const T &value;///< Reference to value to display
 
     public:
-        /// @brief Construct display widget and add to page
-        /// @param root Page to add display to
-        /// @param val Value to display (read-only reference)
         explicit Display(Page &root, const T &val) :
             Widget{root}, value{val} {}
 
-        /// @brief Construct display widget (not attached to page)
-        /// @param val Value to display (read-only reference)
         explicit Display(const T &val) noexcept:
             value{val} {}
 
         /// @brief Render value with appropriate formatting
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.value(value);
         }
@@ -442,24 +414,18 @@ public:
     public:
         W impl;           ///< Wrapped widget instance
 
-        /// @brief Construct labeled widget and add to page
-        /// @param root Page to add labeled widget to
-        /// @param label Text label for widget
-        /// @param impl Widget to wrap with label
         explicit Labeled(Page &root, StringView label, W impl) :
             Widget{root}, label{label}, impl{std::move(impl)} {}
 
         /// @brief Forward click event to wrapped widget
         /// @return Result from wrapped widget's onClick()
-        bool onClick() noexcept override { return impl.onClick(); }
+        kf_nodiscard bool onClick() noexcept override { return impl.onClick(); }
 
         /// @brief Forward change event to wrapped widget
-        /// @param value Change direction
         /// @return Result from wrapped widget's onValue()
-        bool onValue(EventValue value) noexcept override { return impl.onValue(value); }
+        kf_nodiscard bool onValue(EventValue value) noexcept override { return impl.onValue(value); }
 
         /// @brief Render label followed by wrapped widget
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.value(label);
             render.colon();
@@ -469,65 +435,59 @@ public:
 
     /// @brief Spin box for adjusting numeric values with different modes
     /// @tparam T Numeric type for spin box value (must be arithmetic)
-    template<typename T> struct SpinBox final : Widget, HasChangeHandler<T> {
-        static_assert(std::is_arithmetic<T>::value, "T must be arithmetic");
-
+    template<typename T, StepMode M> struct SpinBox final : Widget, HasChangeHandler<T> {
         using Value = T;///< Numeric value type
-
-        /// @brief Spin box adjustment modes
-        enum class Mode : unsigned char {
-            Arithmetic,            ///< Add/subtract step value
-            ArithmeticPositiveOnly,///< Add/subtract step, clamp at zero
-            Geometric              ///< Multiply/divide by step value
-        };
+        static constexpr auto step_mode{M};///< Specialization step mode
 
     private:
+        using StepAdjuster = kf::ui::detail::StepAdjuster<T>;
+        using ValueAdjuster = kf::ui::detail::ValueAdjuster<T, M>;
 
-        T value;                         ///< Reference to value being controlled
+        T value_;                        ///< Reference to value being controlled
         T step;                          ///< Current step size
-        const Mode mode;                 ///< Current adjustment mode
         bool is_step_setting_mode{false};///< true when adjusting step size, false when adjusting value
 
     public:
-        /// @brief Construct spin box (not attached to page)
         explicit SpinBox(
             T default_value = T{},
-            T step = static_cast<T>(1),
-            Mode mode = Mode::Arithmetic
+            T step = StepAdjuster::default_step
         ) noexcept:
-            value{default_value}, step{step}, mode{mode} {}
+            value_{default_value}, step{step} {}
 
-        /// @brief Construct spin box and add to page
-        /// @param root Page to add spin box to
         explicit SpinBox(
             Page &root,
             T default_value = T{},
-            T step = static_cast<T>(1),
-            Mode mode = Mode::Arithmetic
+            T step = StepAdjuster::default_step
         ) :
-            Widget{root}, value{default_value}, step{step}, mode{mode} {}
+            Widget{root}, value_{default_value}, step{step} {}
+
+        void setValue(T value) noexcept {
+            value_ = value;
+            HasChangeHandler<T>::invokeHandler(value_);
+        }
+
+        kf_nodiscard T value() const noexcept { return value_; }
 
         /// @brief Toggle between value adjustment and step adjustment modes
         /// @return true (redraw required after mode change)
-        bool onClick() noexcept override {
+        kf_nodiscard bool onClick() noexcept override {
             is_step_setting_mode = not is_step_setting_mode;
             return true;
         }
 
         /// @brief Adjust value or step based on current mode
         /// @param direction Adjustment direction (positive/negative)
-        /// @return true (redraw required after adjustment)
-        bool onValue(EventValue direction) noexcept override {
+        kf_nodiscard bool onValue(EventValue direction) noexcept override {
             if (is_step_setting_mode) {
-                changeStep(direction);
+                StepAdjuster::adjust(step, direction);
             } else {
-                changeValue(direction);
+                ValueAdjuster::adjust(value_, step, direction);
+                HasChangeHandler<T>::invokeHandler(value_);
             }
-            return true;
+            return true; // redraw required after adjustment
         }
 
         /// @brief Render current value or step size based on mode
-        /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.beginAltBlock();
 
@@ -535,47 +495,10 @@ public:
                 render.arrow();
                 render.value(step);
             } else {
-                render.value(value);
+                render.value(value_);
             }
 
             render.endAltBlock();
-        }
-
-    private:
-
-        /// @brief Adjust controlled value based on mode and direction
-        /// @param direction Adjustment direction (positive/negative)
-        void changeValue(int direction) noexcept {
-            if (mode == Mode::Geometric) {
-                if (direction > 0) {
-                    value *= step;
-                } else {
-                    value /= step;
-                }
-            } else {
-                value += direction * step;
-
-                if (mode == Mode::ArithmeticPositiveOnly and value < 0) {
-                    value = 0;
-                }
-            }
-            HasChangeHandler<T>::invokeHandler(value);
-        }
-
-        /// @brief Adjust step size with multiplier protection
-        /// @param direction Adjustment direction (positive/negative)
-        void changeStep(int direction) noexcept {
-            constexpr T step_multiplier{static_cast<T>(10)};
-
-            if (direction > 0) {
-                step *= step_multiplier;
-            } else {
-                step /= step_multiplier;
-
-                kf_if_constexpr (std::is_integral<T>::value) {
-                    if (step < 1) { step = 1; }
-                }
-            }
         }
     };
 };
