@@ -15,8 +15,10 @@
 #include "kf/memory/ArrayList.hpp"
 #include "kf/memory/Queue.hpp"
 #include "kf/pattern/Singleton.hpp"
-#include "kf/ui/Event.hpp"
 #include "kf/math/units.hpp"
+
+#include "kf/ui/Event.hpp"
+#include "kf/ui/detail.hpp"
 
 
 namespace kf {
@@ -363,30 +365,24 @@ public:
     template<typename T, usize N> struct ComboBox final : Widget, HasChangeHandler<T> {
         static_assert(N >= 1, "N >= 1");
 
-        using Value = T;///< ComboBox value type
-
-        /// @brief Combo box option item
-        struct Item {
-            StringView key;///< Display name for option
-            T value;       ///< Value associated with option
-        };
-
-        using Container = Array<Item, N>;///< Container type for options
+        using Value = T;                             ///< ComboBox value type
+        using Item = kf::ui::detail::ComboBoxItem<T>;///< Item type (in option)
+        using ItemContainer = Array<Item, N>;        ///< Container type for options
 
     private:
-        const Container items;///< Available options
-        int cursor{0};        ///< Current selection index
+        const ItemContainer items;///< Available options
+        isize cursor{0};            ///< Current selection index
 
     public:
         /// @brief Construct combo box (not attached to page)
         /// @param items Array of option items
-        explicit ComboBox(Container items) :
+        explicit ComboBox(ItemContainer items) :
             items{items} {}
 
         /// @brief Construct combo box and add to page
         /// @param root Page to add combo box to
         /// @param items Array of option items
-        explicit ComboBox(Page &root, Container items) :
+        explicit ComboBox(Page &root, ItemContainer items) :
             Widget{root}, items{items} {}
 
         /// @brief Change selection based on direction
@@ -394,7 +390,7 @@ public:
         /// @return true (redraw required after selection change)
         bool onValue(EventValue direction) noexcept override {
             moveCursor(direction);
-            HasChangeHandler<T>::invokeHandler(items[cursor].value);
+            HasChangeHandler<T>::invokeHandler(items[cursor].value());
             return true;
         }
 
@@ -402,17 +398,15 @@ public:
         /// @param render Renderer instance
         void doRender(RenderImpl &render) const noexcept override {
             render.beginAltBlock();
-            render.value(items[cursor].key);
+            render.value(items[cursor].key());
             render.endAltBlock();
         }
 
     private:
         /// @brief Move selection cursor with circular wrapping
         /// @param delta Cursor movement delta
-        void moveCursor(int delta) noexcept {
-            cursor += delta;
-            cursor += N;
-            cursor %= N;
+        void moveCursor(isize delta) noexcept {
+            cursor = (cursor + delta + N) % N;
         }
     };
 
