@@ -47,7 +47,7 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
         }
 
         /// @brief Default constructor (widget not attached to any page)
-        explicit Widget() = default;
+        explicit Widget() noexcept = default;
 
         /// @brief Render widget content (must be implemented by derived classes)
         /// @param render Renderer instance to use for drawing
@@ -75,46 +75,44 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
         }
     };
 
+private:
+
+    /// @brief Special widget for creating page navigation buttons
+    /// @note Internal use only - use Page::link() for page navigation
+    struct PageSetter final : Widget {
+    private:
+        Page &target;///< Target page for navigation
+
+    public:
+        explicit PageSetter(Page &target) noexcept:
+            target{target} {}
+
+        /// @brief Set target page as active on click
+        bool onClick() noexcept override {
+            UI::instance().bindPage(target);
+            return true; // redraw always required after page change
+        }
+
+        void doRender(RenderImpl &render) const noexcept override {
+            render.arrow();
+            render.value(target.title());
+        }
+    };
+
+public:
+
     /// @brief UI page containing widgets and title
     struct Page {
     private:
-        /// @brief Special widget for creating page navigation buttons
-        /// @note Internal use only - use Page::link() for page navigation
-        struct PageSetter final : Widget {
-        private:
-            Page &target;///< Target page for navigation
-
-        public:
-            /// @brief Construct page navigation widget
-            /// @param target Page to navigate to when clicked
-            explicit PageSetter(Page &target) :
-                target{target} {}
-
-            /// @brief Set target page as active on click
-            /// @return true (redraw always required after page change)
-            bool onClick() noexcept override {
-                UI::instance().bindPage(target);
-                return true;
-            }
-
-            /// @brief Render page navigation indicator
-            /// @param render Renderer instance
-            void doRender(RenderImpl &render) const noexcept override {
-                render.arrow();
-                render.value(target.title);
-            }
-        };
-
         ArrayList<Widget *> widgets{};  ///< List of widgets on this page
-        StringView title;               ///< Page title displayed in header
-        usize cursor{0};                ///< Current widget cursor position (focused widget index)
         PageSetter to_this{*this};      ///< Navigation widget to this page
+        usize cursor{0};                ///< Current widget cursor position (focused widget index)
+        StringView title_;               ///< Page title displayed in header
 
     public:
-        /// @brief Construct page with title
-        /// @param title Page title string
+
         explicit Page(StringView title) :
-            title{title} {}
+            title_{title} {}
 
         /// @brief Page behavior on entry
         virtual void onEntry() noexcept {}
@@ -142,11 +140,11 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
         /// @param render Renderer instance to use for drawing
         /// @note Handles cursor positioning and widget focus
         void render(RenderImpl &render) noexcept {
-            render.title(title);
+            render.title(title_);
 
             const auto available = render.widgetsAvailable();
-            const auto start = (totalWidgets() > available) ? kf::min(cursor, totalWidgets() - available) : 0;
-            const auto end = kf::min(start + available, totalWidgets());
+            const auto start = (widgetsTotal() > available) ? kf::min(cursor, widgetsTotal() - available) : 0;
+            const auto end = kf::min(start + available, widgetsTotal());
 
             for (auto i = start; i < end; i += 1) {
                 render.beginWidget(i);
@@ -167,12 +165,12 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
                     return moveCursor(event.value());
                 }
                 case Event::Type::WidgetClick: {
-                    if (totalWidgets() > 0) {
+                    if (widgetsTotal() > 0) {
                         return widgets[cursor]->onClick();
                     }
                 }
                 case Event::Type::WidgetValueChange: {
-                    if (totalWidgets() > 0) {
+                    if (widgetsTotal() > 0) {
                         return widgets[cursor]->onValue(event.value());
                     }
                 }
@@ -181,23 +179,19 @@ template<typename R, typename E> struct UI final : Singleton<UI<R, E>> {
         }
 
         /// @brief Get total widget count on page
-        /// @return Number of widgets on this page
-        kf_nodiscard inline usize totalWidgets() const noexcept { return static_cast<int>(widgets.size()); }
+        kf_nodiscard inline usize widgetsTotal() const noexcept { return widgets.size(); }
+
+        /// @brief Get page title
+        kf_nodiscard StringView title() const noexcept { return title_; }
 
     private:
-        /// @brief Get maximum cursor position (last widget index)
-        /// @return Maximum cursor index (totalWidgets() - 1)
-        kf_nodiscard inline usize cursorPositionMax() const noexcept { return totalWidgets() - 1; }
-
         /// @brief Move cursor within page bounds
         /// @param delta Cursor movement delta (positive/negative)
         /// @return true if cursor position changed (redraw required)
         kf_nodiscard bool moveCursor(isize delta) noexcept {
-            const auto n = totalWidgets();
+            const auto n = widgetsTotal();
             if (n > 1) {
-                cursor += delta;
-                cursor += n;
-                cursor %= n;
+                cursor = (cursor + delta + n) % n;
                 return true;
             } else {
                 return false;
@@ -319,7 +313,7 @@ public:
         /// @brief Construct checkbox with change handler (not attached to page)
         /// @param change_handler Function called when checkbox state changes
         /// @param default_state Initial checkbox state
-        explicit CheckBox(bool default_state = false) :
+        explicit CheckBox(bool default_state = false) noexcept:
             state{default_state} {}
 
         /// @brief Construct checkbox with change handler and add to page
@@ -371,12 +365,12 @@ public:
 
     private:
         const ItemContainer items;///< Available options
-        isize cursor{0};            ///< Current selection index
+        usize cursor{0};            ///< Current selection index
 
     public:
         /// @brief Construct combo box (not attached to page)
         /// @param items Array of option items
-        explicit ComboBox(ItemContainer items) :
+        explicit ComboBox(ItemContainer items) noexcept:
             items{items} {}
 
         /// @brief Construct combo box and add to page
@@ -386,10 +380,10 @@ public:
             Widget{root}, items{items} {}
 
         /// @brief Change selection based on direction
-        /// @param direction Navigation direction (positive/negative)
+        /// @param value Navigation direction (positive/negative)
         /// @return true (redraw required after selection change)
-        bool onValue(EventValue direction) noexcept override {
-            moveCursor(direction);
+        bool onValue(EventValue value) noexcept override {
+            moveCursor(value);
             HasChangeHandler<T>::invokeHandler(items[cursor].value());
             return true;
         }
@@ -425,7 +419,7 @@ public:
 
         /// @brief Construct display widget (not attached to page)
         /// @param val Value to display (read-only reference)
-        explicit Display(const T &val) :
+        explicit Display(const T &val) noexcept:
             value{val} {}
 
         /// @brief Render value with appropriate formatting
@@ -500,7 +494,7 @@ public:
             T default_value = T{},
             T step = static_cast<T>(1),
             Mode mode = Mode::Arithmetic
-        ) :
+        ) noexcept:
             value{default_value}, step{step}, mode{mode} {}
 
         /// @brief Construct spin box and add to page
